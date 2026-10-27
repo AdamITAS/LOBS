@@ -93,7 +93,7 @@ function csv(x){const L=[["Partita","Gioco","Posizione","Nome","Punti","Dettagli
  const t="\ufeff"+L.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(";")).join("\r\n");
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="sala-giochi-"+x.code+".csv";a.click()}
 
-/* ============ GIOCHI: f(el,done(punti,dettaglio),D) ; D = ritmo del giocatore (lento 1.6 / normale 1 / veloce .75) ============ */
+/* ============ GIOCHI ============ */
 const SH=[["Rosso","#d64545","●"],["Blu","#2f6fed","■"],["Verde","#1f8a4f","▲"],["Giallo","#a87b00","★"]];
 const mix=a=>[...a].sort(()=>Math.random()-.5);
 function gReflex(el,done,D){const pad=document.createElement("div");pad.className="pad";el.append(pad);
@@ -234,17 +234,30 @@ function big(){cur="big";const s=get(K.s);if(!s){app(`<section class="card cente
  app(`<div class="tv"><section class="card center"><p class="mut">Entra con il codice</p><div class="code">${s.code}</div><p><span class="tag">${MODES[s.mode]}</span> ${s.status==="playing"?"· in corso: <b>"+esc(GAMES[s.game].n)+"</b>":s.status==="ended"?"· sessione conclusa":"· in attesa del prossimo gioco"}</p></section>
  <section class="card" style="margin-top:16px"><h2>${G?"Classifica squadre":"Classifica"}</h2>${lb(board(s,ps))}</section>
  ${s.status!=="playing"&&lr.length?`<section class="card" style="margin-top:16px"><h2>${esc(last.n)}: ${G?"vince":"vince"} ${esc(lr[0].name)}</h2>${lb(lr)}</section>`:""}</div>`)}
-function player(){const s=get(K.s),p=me&&get(K.p+me),G=s&&s.mode==="group",ps=players();
- const ok=s&&p&&s.allow[me]&&s.status==="playing"&&(s.mode!=="duel"||s.duel.includes(me));
- if(running!==null&&!(ok&&running===s.round)){stop&&stop();stop=null;running=null}else if(running!==null)return;
- if(me&&!p){me=null;sessionStorage.removeItem("ga:me");msg="Sei stato rimosso o la sessione è cambiata."}
+function player(){
+ const s=get(K.s),p=me&&get(K.p+me),G=s&&s.mode==="group",ps=players();
+ 
+ if(running!==null&&!(ok_running_check(s,p))){stop&&stop();stop=null;running=null}else if(running!==null)return;
+
+ // CORRETTO: Non scollega più se il player non viene trovato subito (evita falsi positivi quando è disabilitato o in caricamento)
+ if(me&&!p&&s&&CS.ps.length>0){
+   // Controlliamo se la sessione è cambiata del tutto o se siamo stati davvero rimossi
+   // Per sicurezza manteniamo la sessione finché la stanza esiste, aggiornando solo il messaggio di attesa
+   msg="In attesa di sincronizzazione con la stanza…";
+ }
+
  if(!me){if(cur==="join")return;cur="join";app(`<section class="card" style="max-width:480px;margin:auto"><h2>Entra nella sala</h2><input id="nm" placeholder="Nome, soprannome o nome della squadra" maxlength="20" autocomplete="off"><input id="cd" inputmode="numeric" maxlength="4" placeholder="Codice stanza (4 cifre)"><div class="err" id="err">${msg}</div><button class="b big" data-a="join">Entra</button><p class="mut">Nessun account né email. Se l’animatore sceglie i gruppi, scrivete il nome della squadra.</p></section>`);return}
+ 
  cur="pl";const b=s?board(s,ps):[];
  if(!s||s.status==="ended"){app(`<section class="card center"><h2>Sessione conclusa</h2>${lb(b,me)}<button class="b" data-a="leave">Esci</button></section>`);return}
- if(!s.allow[me]){app(`<section class="card center"><h2>Attendi l’animatore</h2><p>${G?"La tua squadra è in lista.":"Il tuo dispositivo è in lista."} L’animatore deve abilitarti per farti entrare.</p><button class="b alt" data-a="leave">Esci</button></section>`);return}
+ 
+ const isAllowed=p&&s.allow[me];
+ if(!isAllowed){app(`<section class="card center"><h2>Attendi l’animatore</h2><p>${G?"La tua squadra è in lista.":"Il tuo dispositivo è in lista."} L’animatore deve abilitarti per farti entrare.</p><button class="b alt" data-a="leave">Esci</button></section>`);return}
+ const ok=s&&p&&isAllowed&&s.status==="playing"&&(s.mode!=="duel"||s.duel.includes(me));
  if(ok&&!(String(s.round) in p.scores)){const g=GAMES[s.game],r=s.round,D=DV[p.diff||"normale"];running=r;
   app(`<section class="card"><h2>${g.n}</h2><div id="stage" class="center"><p>${g.d}</p>${G?`<p>👥 Un componente usa il tablet, gli altri suggeriscono a voce!</p>`:""}<button class="b big" id="go">Inizia!</button></div></section>`);
   $("#go").onclick=()=>{const st=$("#stage");st.innerHTML="";stop=g.f(st,async(pts,det)=>{await sb.rpc("submit_score",{p_id:me,p_secret:sec,p_round:r,p_pts:pts,p_det:det||""});stop=null;running=null;await load();render()},D)};return}
+ 
  const last=s.played[s.played.length-1],mine=b.findIndex(x=>x.id===me)+1,playing=s.status==="playing";
  let head="Sei in sala",txt="Aspetta che l’animatore avvii il prossimo gioco.";
  if(playing&&!ok){const n=(s.duel||[]).map(id=>(ps.find(x=>x.id===id)||{}).name||"?");head="Sfida in corso";txt="Tocca a "+n.join(" e ")+": tifate per loro!"}
@@ -252,6 +265,11 @@ function player(){const s=get(K.s),p=me&&get(K.p+me),G=s&&s.mode==="group",ps=pl
  app(`<section class="card center"><h2>${head}</h2><p>${txt}</p><p>${G?"Posizione della squadra":"La tua posizione"}: <b>${mine}°</b></p></section>
  ${last?`<section class="card" style="margin-top:16px"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lb(rr(last,ps),me)}</section>`:""}
  <section class="card" style="margin-top:16px"><h2>Classifica</h2>${lb(b,me)}<button class="b alt sm" data-a="leave">Esci dalla stanza</button></section>`)}
+
+function ok_running_system(s,p){return s&&p&&s.allow[me]&&s.status==="playing";}
+// helper per running check
+function ok_running_check(s,p){return s&&p&&s.allow[me]&&s.status==="playing"&&running===s.round;}
+
 (async()=>{
  if(!window.SUPABASE_URL||!window.supabase||window.SUPABASE_URL.includes("TUO-PROGETTO")){app(`<section class="card"><h2>Configurazione mancante</h2><p>Compila <b>config.js</b> con URL e chiave anon di Supabase.</p></section>`);return}
  sb=supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);
