@@ -420,7 +420,7 @@ document.addEventListener("change",e=>{const el=e.target.closest("[data-c]");if(
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const r=$("#modal-root");if(r&&r.firstChild)r.innerHTML=""}});
 /* ============ VISTE ============ */
 function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?admin():login();player()}
-function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>LOBS</h1><p class="mut">Quiz, riflessi e sfide di gruppo: nessun account, basta un codice.</p></div>
+function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>LOBS</h1><p class="mut">QUIZ, RIFLESSI e SFIDE di gruppo - più punti = meglio è</p></div>
 <div class="home">
 <button class="card pick" data-a="role" data-v="player"><span class="pick-ico">📱</span><h2>Sono un partecipante</h2><p>Entro con il codice della stanza e gioco (da solo, in sfida o in squadra).</p><span class="pick-cta">Entra →</span></button>
 <button class="card pick" data-a="role" data-v="admin"><span class="pick-ico">🎛️</span><h2>Sono l’animatore</h2><p>Gestisco stanza, modalità, dispositivi e classifica.</p><span class="pick-cta">Gestisci →</span></button>
@@ -479,7 +479,7 @@ function player(){
 <input id="nm" placeholder="Nome, soprannome o nome della squadra" maxlength="20" autocomplete="off"><input id="cd" inputmode="numeric" maxlength="4" placeholder="Codice stanza (4 cifre)"><div class="err" id="err">${msg}</div><button class="b big" data-a="join">Entra</button><p class="mut" style="margin-top:12px">Nessun account né email. Se l’animatore sceglie i gruppi, scrivete il nome della squadra.</p></section>`);return}
  
  cur="pl";const b=s?board(s,ps):[];
- if(!s||s.status==="ended"){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico trophy">🏁</div><h2>Sessione conclusa</h2><p class="mut">Grazie per aver giocato! Ecco come siete posizionati.</p>${lb(b,me)}<div class="exit-reveal" style="margin-top:16px"><button class="b alt" data-a="leave">Esci dalla stanza</button></div></section>`);return}
+ if(!s||s.status==="ended"){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico trophy">🏁</div><h2>Sessione conclusa</h2><p class="mut">Grazie per aver giocato! Ora puoi tornare al Menu!.</p>${lb(b,me)}<div class="exit-reveal" style="margin-top:16px"><button class="b alt" data-a="leave">Esci dalla stanza</button></div></section>`);return}
  
  const isAllowed=p&&s.allow[me];
  if(!isAllowed){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico hour">⏳</div><h2>Attendi l’animatore</h2><p>${G?"La tua squadra è in lista.":"Il tuo dispositivo è in lista."} L’animatore deve abilitarti per farti entrare.</p><div class="dots"><i></i><i></i><i></i></div><div class="exit-reveal" style="margin-top:16px"><button class="b alt sm" data-a="leave">Esci</button></div></section>`);return}
