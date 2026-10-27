@@ -207,33 +207,22 @@ summary::marker{color:var(--ac)}
  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
  .exit-reveal{opacity:1;transform:none;animation:none}
 }
-/* Crediti Footer */
-.credits-footer {
-  text-align: center;
-  padding: 24px 16px;
-  margin-top: 40px;
-  font-size: 0.88em;
-  color: var(--mut);
-  border-top: 1px dashed var(--bd);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-.credits-footer strong {
-  color: var(--fg);
-  font-weight: 700;
-}
-.credits-footer span {
-  opacity: 0.7;
-}
+
+/* ---------- footer ---------- */
+body{display:flex;flex-direction:column}
+main{flex:1;width:100%}
+.foot{padding:20px clamp(14px,3vw,26px) max(20px,env(safe-area-inset-bottom));text-align:center;color:var(--mut);font-size:.8em;line-height:1.5;border-top:1px solid var(--bd);background:rgba(255,255,255,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.foot b{color:var(--fg);font-family:var(--fd)}
+.foot .sep{display:inline-block;margin:0 6px;opacity:.5}
+
 </style></head><body>
-<header class="bar"><span class="brand"><span class="brand-logo">🎲</span>LOBS</span><button class="b alt sm" data-a="home">Menu</button></header> <footer class="credits-footer">
-  <span>Sviluppato da</span>
-  <strong>Adam Khayari</strong>
-  <span>· Sala Giochi v1.0</span>
+<header class="bar"><span class="brand"><span class="brand-logo">🎲</span>LOBS</span><button class="b alt sm" data-a="home">Menu</button></header>
+
+
+<main id="app"><div class="boot"><div class="skel" style="height:70px;width:62%"></div><div class="skel" style="height:190px"></div><div class="skel" style="height:150px;width:82%"></div></div></main> <footer class="foot">
+  <div><b>LOBS</b><span class="sep">·</span>Attività per l’Alternanza Scuola-Lavoro</div>
+  <div>Sviluppato da <b>Adam Khayari</b><span class="sep">·</span>Classe 5ª SSAA<span class="sep">·</span>© 2026</div>
 </footer>
-<main id="app"><div class="boot"><div class="skel" style="height:70px;width:62%"></div><div class="skel" style="height:190px"></div><div class="skel" style="height:150px;width:82%"></div></div></main>
 <div id="toasts" aria-live="polite"></div>
 <div id="modal-root"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
