@@ -2,7 +2,7 @@
 <html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#3b6fed">
-<title>Sala Giochi</title>
+<title>LOBS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -207,8 +207,32 @@ summary::marker{color:var(--ac)}
  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
  .exit-reveal{opacity:1;transform:none;animation:none}
 }
+/* Crediti Footer */
+.credits-footer {
+  text-align: center;
+  padding: 24px 16px;
+  margin-top: 40px;
+  font-size: 0.88em;
+  color: var(--mut);
+  border-top: 1px dashed var(--bd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.credits-footer strong {
+  color: var(--fg);
+  font-weight: 700;
+}
+.credits-footer span {
+  opacity: 0.7;
+}
 </style></head><body>
-<header class="bar"><span class="brand"><span class="brand-logo">🎲</span>Sala Giochi</span><button class="b alt sm" data-a="home">Menu</button></header>
+<header class="bar"><span class="brand"><span class="brand-logo">🎲</span>LOBS</span><button class="b alt sm" data-a="home">Menu</button></header> <footer class="credits-footer">
+  <span>Sviluppato da</span>
+  <strong>Adam Khayari</strong>
+  <span>· Sala Giochi v1.0</span>
+</footer>
 <main id="app"><div class="boot"><div class="skel" style="height:70px;width:62%"></div><div class="skel" style="height:190px"></div><div class="skel" style="height:150px;width:82%"></div></div></main>
 <div id="toasts" aria-live="polite"></div>
 <div id="modal-root"></div>
@@ -407,7 +431,7 @@ document.addEventListener("change",e=>{const el=e.target.closest("[data-c]");if(
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const r=$("#modal-root");if(r&&r.firstChild)r.innerHTML=""}});
 /* ============ VISTE ============ */
 function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?admin():login();player()}
-function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>Sala Giochi</h1><p class="mut">Quiz, riflessi e sfide di gruppo: nessun account, basta un codice.</p></div>
+function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>LOBS</h1><p class="mut">Quiz, riflessi e sfide di gruppo: nessun account, basta un codice.</p></div>
 <div class="home">
 <button class="card pick" data-a="role" data-v="player"><span class="pick-ico">📱</span><h2>Sono un partecipante</h2><p>Entro con il codice della stanza e gioco (da solo, in sfida o in squadra).</p><span class="pick-cta">Entra →</span></button>
 <button class="card pick" data-a="role" data-v="admin"><span class="pick-ico">🎛️</span><h2>Sono l’animatore</h2><p>Gestisco stanza, modalità, dispositivi e classifica.</p><span class="pick-cta">Gestisci →</span></button>
@@ -447,7 +471,7 @@ function admin(){if(document.activeElement&&document.activeElement.tagName==="SE
  <p class="btnrow"><button class="b sm" data-a="all">Abilita tutti</button> <button class="b sm alt" data-a="bots">+ demo</button></p></section>
 ${last?`<section class="card"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lr.length?`<p>Vince: <b>${esc(lr[0].name)}</b> 🏆</p>`:""}${lb(lr)}</section>`:""}
 <section class="card"><h2>Classifica della sessione</h2>${lb(b)}</section></div></div>${hist(h)}`)}
-function big(){cur="big";const s=get(K.s);if(!s){app(`<section class="card center tv"><div class="big-ico hour">📺</div><h2>In attesa dell’animatore…</h2><p class="mut">Apri «Sala Giochi» come animatore per creare la stanza.</p><div class="dots"><i></i><i></i><i></i></div></section>`);return}
+function big(){cur="big";const s=get(K.s);if(!s){app(`<section class="card center tv"><div class="big-ico hour">📺</div><h2>In attesa dell’animatore…</h2><p class="mut">Apri «LOBS» come animatore per creare la stanza.</p><div class="dots"><i></i><i></i><i></i></div></section>`);return}
  const ps=players(),G=s.mode==="group",last=s.played[s.played.length-1],lr=last?rr(last,ps):[];
  const cd=[...String(s.code)].map((c,i)=>`<span style="animation-delay:${i*100}ms">${c}</span>`).join("");
  const stp=s.status==="playing"?`· in corso: <b>${esc(GAMES[s.game].n)}</b>`:s.status==="ended"?"· sessione conclusa":"· in attesa del prossimo gioco";
