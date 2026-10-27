@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sala Giochi</title>
+<style>
+:root{--bg:#f3f6fb;--fg:#1d2a3a;--card:#fff;--ac:#2f6fed;--ac2:#18a76b;--on:#fff;--mut:#5d6e82;--bd:#d8e1ee;--r:20px;--fs:20px;--ff:'Trebuchet MS',system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:var(--fs)/1.45 var(--ff)}
+h2{margin:0 0 10px;font-size:1.2em}p{margin:6px 0}small{display:block;font-weight:400;opacity:.85}
+:focus-visible{outline:4px solid var(--ac2);outline-offset:2px}
+.bar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:2px solid var(--bd)}
+main{max-width:1150px;margin:0 auto;padding:18px}
+.card{background:var(--card);border:2px solid var(--bd);border-radius:var(--r);padding:16px;box-shadow:0 6px 20px rgba(30,60,120,.1)}
+.b{min-height:56px;padding:0 22px;border:3px solid var(--ac);border-radius:var(--r);background:var(--ac);color:var(--on);font:700 1em var(--ff);cursor:pointer;touch-action:manipulation}
+.b.alt{background:transparent;color:var(--fg)}.b.sm{min-height:44px;padding:0 14px;font-size:.8em}
+.b.on{background:var(--ac2);border-color:var(--ac2)}
+.b.block{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 16px}
+.b.big{font-size:1.5em;min-height:90px;width:100%}.b[disabled]{opacity:.4;cursor:not-allowed}
+input,select{width:100%;min-height:56px;margin:6px 0;padding:0 14px;border:3px solid var(--bd);border-radius:var(--r);background:var(--card);color:var(--fg);font:inherit}
+.mut{color:var(--mut)}.err{color:#c62d32;font-weight:700;min-height:1.4em}.center{text-align:center}
+.home{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:16px}
+.pick{text-align:left;font:inherit;color:inherit;cursor:pointer}.pick:hover{border-color:var(--ac)}
+ul{padding-left:20px;margin:6px 0}
+.adm{display:grid;gap:16px;grid-template-columns:1fr 1fr;align-items:start}
+.col{display:grid;gap:16px;align-content:start}
+@media(max-width:860px){.adm{grid-template-columns:1fr}}
+.code{font-size:3em;font-weight:800;letter-spacing:.25em;color:var(--ac)}
+.tag{display:inline-block;padding:2px 12px;border-radius:99px;background:var(--ac);color:#fff;font-weight:700;font-size:.8em}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--bd)}
+.dot2{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;background:#999}.dot2.on{background:#1fbf6a}
+.lb{list-style:none;margin:0;padding:0}
+.lb li{display:flex;gap:12px;align-items:center;padding:10px 12px;margin:6px 0;border-radius:var(--r);border:2px solid var(--bd)}
+.lb li b{min-width:3ch}.lb li span{flex:1}.lb li em{font-style:normal;font-weight:800}
+.lb li:first-child{border-color:var(--ac);font-size:1.15em}.lb li:first-child b::after{content:"🏆"}
+.lb li.me{background:var(--ac);color:#fff;border-color:var(--ac)}
+details{padding:8px 0;border-bottom:1px dashed var(--bd)}summary{cursor:pointer;font-weight:700}
+.pad{display:grid;place-items:center;min-height:50vh;border-radius:var(--r);color:#fff;font-size:1.8em;font-weight:800;text-align:center;padding:16px;cursor:pointer;user-select:none;touch-action:manipulation}
+.field{position:relative;height:52vh;border:3px dashed var(--bd);border-radius:var(--r);overflow:hidden;touch-action:manipulation}
+.dot{position:absolute;width:96px;height:96px;border-radius:50%;border:0;background:var(--ac);box-shadow:0 0 0 10px rgba(47,111,237,.3);cursor:pointer}
+.hud{display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tile{min-height:22vh;border:0;border-radius:var(--r);color:#fff;font:800 1.4em var(--ff);display:grid;place-content:center;gap:4px;cursor:pointer;touch-action:manipulation}
+.tile span{font-size:2em}.tile.lit{outline:8px solid var(--fg);transform:scale(1.04)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card2{aspect-ratio:1;min-height:80px;font-size:2.2em;border:3px solid var(--ac);border-radius:var(--r);background:var(--card);color:var(--fg);cursor:pointer}
+.card2.up{background:var(--ac2);color:#fff;border-color:var(--ac2)}
+.tv{font-size:1.4em}.tv .code{font-size:5em}
+</style></head><body>
+<header class="bar"><b>Sala Giochi</b><button class="b alt sm" data-a="home">Menu</button></header>
+<main id="app"></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+/* ============ DATI · Supabase ============ */
+const $=s=>document.querySelector(s);
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const K={s:"s",h:"h",p:"p:"};
+const CS={s:null,ps:[],h:[]};
+const get=k=>k===K.s?CS.s:k===K.h?CS.h:k.startsWith(K.p)?CS.ps.find(p=>p.id===k.slice(2))||null:null;
+const players=()=>CS.ps;
+const app=h=>{const o=[...document.querySelectorAll("details[open]")].map(d=>d.dataset.k);$("#app").innerHTML=h;o.forEach(k=>{const d=document.querySelector(`details[data-k="${k}"]`);if(d)d.open=true})};
+let sb=null;
+function build(x,pl,sc,ro,pr){const pm={};(pr||[]).forEach(r=>pm[r.player_id]=new Date(r.seen).getTime());
+ const ps=pl.map(p=>({id:p.id,name:p.name,diff:p.diff,bot:p.bot,ts:pm[p.id]||0,scores:{},det:{}}));
+ sc.forEach(r=>{const p=ps.find(q=>q.id===r.player_id);if(p){p.scores[r.round]=r.pts;p.det[r.round]=r.det}});
+ const s={id:x.id,code:x.code,mode:x.mode,status:x.status,round:x.round,sel:x.sel,game:x.game,duel:x.duel||[],ended:x.ended_at,allow:{},
+  played:[...ro].sort((a,b)=>a.round-b.round).map(r=>({r:r.round,g:r.game,n:r.name,m:r.mode}))};
+ pl.forEach(p=>s.allow[p.id]=p.allowed);return{s,ps}}
+let busy=false,again=false;
+async function load(){if(!role)return;if(busy){again=true;return}busy=true;
+ try{let q=sb.from("sessions").select("*");
+  if(role==="player"){if(!sid){CS.s=null;CS.ps=[];busy=false;return}q=q.eq("id",sid)}else q=q.order("created_at",{ascending:false}).limit(1);
+  const{data:ss,error}=await q;if(error)throw error;const x=ss&&ss[0];
+  if(!x){CS.s=null;CS.ps=[]}else{
+   const rs=await Promise.all(["players","scores","rounds"].concat(isAdm?["presence"]:[]).map(t=>t==="presence"?sb.from(t).select("*"):sb.from(t).select("*").eq("session_id",x.id)));
+   if(rs.some(r=>r.error))throw rs.find(r=>r.error).error;
+   const r=build(x,rs[0].data,rs[1].data,rs[2].data,rs[3]&&rs[3].data);CS.s=r.s;CS.ps=r.ps}
+ }catch(e){console.error(e)}
+ busy=false;if(again){again=false;load()}}
+async function loadHist(){if(!isAdm)return;const{data}=await sb.from("sessions").select("*,players(*),scores(*),rounds(*)").eq("status","ended").order("ended_at",{ascending:false}).limit(30);
+ CS.h=(data||[]).map(x=>{const r=build(x,x.players,x.scores,x.rounds);return snap(r.s,r.ps)});render()}
+let tm;const live=()=>sb.channel("ga").on("postgres_changes",{event:"*",schema:"public"},()=>{clearTimeout(tm);tm=setTimeout(async()=>{await load();render()},150)}).subscribe();
+
+const sum=p=>Object.values(p.scores||{}).reduce((a,b)=>a+b,0);
+const board=(s,ps)=>ps.filter(p=>s.allow[p.id]).map(p=>({id:p.id,name:p.name,pts:sum(p)})).sort((a,b)=>b.pts-a.pts);
+const part=(s,ps)=>ps.filter(p=>s.allow[p.id]&&(s.mode!=="duel"||s.duel.includes(p.id)));
+const rr=(x,ps)=>ps.filter(p=>p.scores&&x.r in p.scores).map(p=>({id:p.id,name:p.name,pts:p.scores[x.r],det:(p.det||{})[x.r]||""})).sort((a,b)=>b.pts-a.pts);
+const lb=(b,m)=>b.length?`<ol class="lb">${b.map((x,i)=>`<li class="${x.id===m?"me":""}"><b>${i+1}</b><span>${esc(x.name)}${x.det?`<small>${esc(x.det)}</small>`:""}</span><em>${x.pts}</em></li>`).join("")}</ol>`:`<p class="mut">Ancora nessun punteggio.</p>`;
+const snap=(s,ps)=>({at:new Date(s.ended||Date.now()).toLocaleString("it-IT"),code:s.code,mode:s.mode,games:s.played.map(x=>({n:x.n,m:x.m,rank:rr(x,ps)})),board:board(s,ps)});
+function csv(x){const L=[["Partita","Gioco","Posizione","Nome","Punti","Dettaglio"]];
+ x.games.forEach((g,i)=>g.rank.forEach((r,j)=>L.push([i+1,g.n,j+1,r.name,r.pts,r.det])));
+ L.push([]);L.push(["Classifica finale"]);x.board.forEach((r,j)=>L.push(["","Totale",j+1,r.name,r.pts,""]));
+ const t="\ufeff"+L.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="sala-giochi-"+x.code+".csv";a.click()}
+
+/* ============ GIOCHI: f(el,done(punti,dettaglio),D) ; D = ritmo del giocatore (lento 1.6 / normale 1 / veloce .75) ============ */
+const SH=[["Rosso","#d64545","●"],["Blu","#2f6fed","■"],["Verde","#1f8a4f","▲"],["Giallo","#a87b00","★"]];
+const mix=a=>[...a].sort(()=>Math.random()-.5);
+function gReflex(el,done,D){const pad=document.createElement("div");pad.className="pad";el.append(pad);
+ let n=0,pts=0,st=2,t0,to,to2;const show=(c,t)=>{pad.style.background=c;pad.textContent=t};
+ const next=()=>{if(n==5){done(pts,"5 tentativi");return}n++;st=0;show("#c0392b","Aspetta il verde… ("+n+"/5)");to=setTimeout(()=>{st=1;t0=performance.now();show("#1b8f4e","TOCCA ORA!")},1200+Math.random()*2500)};
+ pad.onpointerdown=()=>{if(st==0){clearTimeout(to);st=2;show("#8a6d00","Troppo presto! 0 punti");to2=setTimeout(next,1300)}
+  else if(st==1){const ms=Math.round(performance.now()-t0),p=Math.max(0,Math.round(1000-ms/D));pts+=p;st=2;show("#2f6fed",ms+" ms · +"+p+" punti");to2=setTimeout(next,1300)}};
+ next();return()=>{clearTimeout(to);clearTimeout(to2)}}
+function gTarget(el,done,D){let pts=0,t=20,sp;const hud=document.createElement("div"),box=document.createElement("div");hud.className="hud";box.className="field";el.append(hud,box);
+ const up=()=>hud.innerHTML=`<span>Tempo: ${t}s</span><span>Punti: ${pts}</span>`;
+ const spawn=()=>{clearTimeout(sp);box.innerHTML="";const d=document.createElement("button");d.className="dot";d.setAttribute("aria-label","Bersaglio");
+  d.style.left=Math.max(0,Math.random()*(box.clientWidth-96))+"px";d.style.top=Math.max(0,Math.random()*(box.clientHeight-96))+"px";
+  d.onpointerdown=()=>{pts+=10;up();spawn()};box.append(d);sp=setTimeout(spawn,2200*D)};
+ const clean=()=>{clearInterval(iv);clearTimeout(sp)};
+ const iv=setInterval(()=>{t--;up();if(t<=0){clean();done(pts,pts/10+" bersagli")}},1000);up();spawn();return clean}
+function gColor(el,done,D){let n=0,pts=0,to;const box=document.createElement("div");el.append(box);
+ const next=()=>{if(n==10){done(pts,pts/100+"/10 giuste");return}n++;const t=SH[Math.random()*4|0];
+  box.innerHTML=`<h2 class="center">${n}/10 · Tocca solo: ${t[2]} ${t[0].toUpperCase()}</h2><div class="grid2">${mix(SH).map(c=>`<button class="tile" style="background:${c[1]}" data-k="${c[0]}"><span>${c[2]}</span>${c[0]}</button>`).join("")}</div>`;
+  box.querySelectorAll(".tile").forEach(b=>b.onclick=()=>{clearTimeout(to);if(b.dataset.k==t[0])pts+=100;next()});to=setTimeout(next,6000*D)};
+ next();return()=>clearTimeout(to)}
+function gSeq(el,done,D){let seq=[],i=0,pts=0,to=[],lock=true,dead=false;const box=document.createElement("div"),msg=document.createElement("h2");msg.className="center";box.className="grid2";
+ box.innerHTML=SH.map((c,k)=>`<button class="tile" style="background:${c[1]}"><span>${c[2]}</span>${k+1}</button>`).join("");el.append(msg,box);
+ const B=[...box.children],T=(f,ms)=>to.push(setTimeout(f,ms)),step=1000*D;
+ const round=()=>{if(dead)return;seq.push(Math.random()*4|0);i=0;lock=true;msg.textContent="Guarda la sequenza ("+seq.length+")";
+  seq.forEach((k,j)=>{T(()=>B[k].classList.add("lit"),800+j*step);T(()=>B[k].classList.remove("lit"),800+j*step+step*.6)});
+  T(()=>{lock=false;msg.textContent="Ora tocca tu, nello stesso ordine"},800+seq.length*step)};
+ B.forEach((b,k)=>b.onclick=()=>{if(lock)return;if(k==seq[i]){i++;pts+=10;if(i==seq.length){lock=true;if(seq.length==8){done(pts,"sequenza completa 8/8");return}msg.textContent="Bravo!";T(round,1000)}}
+  else{lock=true;done(pts,"errore alla lunghezza "+seq.length)}});
+ round();return()=>{dead=true;to.forEach(clearTimeout)}}
+function gPairs(el,done){const E=["🍎","🐟","🌻","🚲","🎵","☕"],c=mix([...E,...E]);let o=[],f=0,m=0,lock=false,to;
+ const box=document.createElement("div"),h=document.createElement("p");box.className="grid4";h.className="center";el.append(h,box);
+ const up=()=>h.textContent="Mosse: "+m+" · Coppie: "+f+"/6";
+ c.forEach(e=>{const b=document.createElement("button");b.className="card2";b.textContent="?";b.setAttribute("aria-label","Carta");
+  b.onclick=()=>{if(lock||b.classList.contains("up"))return;b.classList.add("up");b.textContent=e;o.push(b);
+   if(o.length==2){m++;lock=true;if(o[0].textContent==o[1].textContent){f++;o=[];lock=false;if(f==6)done(Math.max(100,1000-(m-6)*50),m+" mosse")}
+    else to=setTimeout(()=>{o.forEach(x=>{x.classList.remove("up");x.textContent="?"});o=[];lock=false},1100)}up()};box.append(b)});
+ up();return()=>clearTimeout(to)}
+const mc=(pool,n,sc)=>(el,done)=>{const q=mix(pool).slice(0,n);let i=0,pts=0,ok=0,dead=false;const box=document.createElement("div");el.append(box);
+ const next=()=>{if(dead)return;if(i==n){done(pts,ok+"/"+n+" giuste");return}const x=q[i++];
+  box.innerHTML=`<h2 class="center">${i}/${n} · ${esc(x[0])}</h2>`+x[1].map((t,k)=>`<button class="b block alt" data-k="${k}">${esc(t)}</button>`).join("");
+  const bs=[...box.querySelectorAll("button")];bs.forEach(b=>b.onclick=()=>{const r=+b.dataset.k===x[2];if(r){pts+=sc;ok++}
+   bs.forEach(z=>z.style.pointerEvents="none");[bs[x[2]],b].forEach((z,j)=>{z.style.background=(j==0||r)?"#1f8a4f":"#c62d32";z.style.color="#fff"});setTimeout(next,1500)})};
+ next();return()=>{dead=true}};
+const RID=[["Ho città ma non case, fiumi ma non acqua, strade ma nessuna auto. Cosa sono?",["Un sogno","Una mappa","Un libro"],1],["Più ne togli, più diventa grande. Cos’è?",["Un buco","Un debito","Un mucchio"],0],["Se ieri era lunedì, che giorno sarà dopodomani?",["Mercoledì","Giovedì","Venerdì"],1],["Quanti mesi hanno 28 giorni?",["Solo febbraio","Tutti","Nessuno"],1],["Un contadino ha 17 pecore: tutte tranne 9 scappano. Quante ne restano?",["8","9","17"],1],["Ha i tasti ma non apre porte. Cos’è?",["Un pianoforte","Un armadio","Una scatola"],0],["Quale numero viene dopo: 2, 4, 6, 8…?",["9","10","12"],1],["Quante dita hanno due mani e tre dita in più?",["13","10","15"],0]];
+const ODD=[["Trova l’intruso",["Mela","Pera","Sedia","Banana"],2],["Trova l’intruso",["Cane","Gatto","Tavolo","Cavallo"],2],["Trova l’intruso",["Rosso","Blu","Martedì","Verde"],2],["Trova l’intruso",["Chitarra","Violino","Pianoforte","Forchetta"],3],["Trova l’intruso",["Roma","Milano","Francia","Napoli"],2],["Trova l’intruso",["Maglione","Cappotto","Pentola","Sciarpa"],2]];
+const ORD=[["Preparare il caffè",["Riempire d’acqua la moka","Mettere il caffè","Mettere sul fuoco","Versare nella tazza"]],["Lavarsi le mani",["Aprire l’acqua","Insaponare","Sciacquare","Asciugare"]],["Fare una telefonata",["Prendere il telefono","Comporre il numero","Parlare","Riagganciare"]],["Piantare un fiore",["Scavare una buca","Mettere il fiore","Coprire di terra","Annaffiare"]]];
+function gOrder(el,done){const P=mix(ORD).slice(0,3);let i=0,pts=0,er=0,dead=false;const box=document.createElement("div");el.append(box);
+ const next=()=>{if(dead)return;if(i==3){done(pts,er+" errori");return}const p=P[i++];let k=0,e=0;
+  box.innerHTML=`<h2 class="center">${i}/3 · ${esc(p[0])}: toccate i passi in ordine</h2>`+mix(p[1].map((t,j)=>[t,j])).map(x=>`<button class="b block alt" data-j="${x[1]}">${esc(x[0])}</button>`).join("")+`<p class="center err" id="oe"></p>`;
+  box.querySelectorAll("button").forEach(b=>b.onclick=()=>{if(+b.dataset.j===k){k++;b.classList.remove("alt");b.insertAdjacentText("afterbegin",k+". ");b.style.pointerEvents="none";if(k==4){pts+=Math.max(0,300-e*100);er+=e;setTimeout(next,1000)}}
+   else{e++;$("#oe").textContent="Non è questo, riprovate!"}})};
+ next();return()=>{dead=true}}
+const GAMES={
+ reflex:{n:"Riflessi al semaforo",d:"5 tentativi: tocca appena diventa verde",f:gReflex,bot:()=>1500+(Math.random()*2700|0)},
+ target:{n:"Tocca i bersagli",d:"20 secondi: tocca più cerchi che puoi",f:gTarget,bot:()=>90+(Math.random()*170|0)},
+ color:{n:"Solo il colore giusto",d:"Tocca solo il colore indicato (colore, forma e nome)",f:gColor,bot:()=>100*(2+(Math.random()*8|0))},
+ seq:{n:"Memoria dei colori",d:"Ripeti la sequenza, sempre più lunga",f:gSeq,bot:()=>10*(6+(Math.random()*30|0))},
+ pairs:{n:"Coppie",d:"Gira le carte e trova le coppie, senza fretta",f:gPairs,bot:()=>400+(Math.random()*500|0)},
+ riddle:{g:1,n:"Indovinelli di gruppo",d:"5 indovinelli: discutete e scegliete insieme",f:mc(RID,5,200),bot:()=>200*(1+(Math.random()*4|0))},
+ odd:{g:1,n:"Trova l’intruso",d:"5 domande: quale parola non c’entra?",f:mc(ODD,5,200),bot:()=>200*(1+(Math.random()*4|0))},
+ order:{g:1,n:"Metti in ordine",d:"3 attività quotidiane: ordinate i passaggi",f:gOrder,bot:()=>400+(Math.random()*500|0)}};
+const MODES={single:"Singoli",duel:"1 contro 1",group:"Gruppi"};
+const DIFF=["lento","normale","veloce"],DV={lento:1.6,normale:1,veloce:.75};
+
+/* ============ STATO E AZIONI ============ */
+let role=sessionStorage.getItem("ga:role"),isAdm=false,me=sessionStorage.getItem("ga:me"),sec=sessionStorage.getItem("ga:sec"),sid=sessionStorage.getItem("ga:sid"),cur="",running=null,stop=null,msg="",am="";
+const db=async p=>{const{error}=await p;if(error){console.error(error);am="Errore: "+error.message}};
+const go=async f=>{await f;await load();render()};
+const upd=patch=>go(db(sb.from("sessions").update(patch).eq("id",CS.s.id)));
+const endNow=()=>({status:"ended",ended_at:new Date().toISOString()});
+const A={
+ home(){role=null;sessionStorage.removeItem("ga:role");cur="";render()},
+ async role(v){role=v;sessionStorage.setItem("ga:role",v);cur="";await load();render()},
+ async login(){const{error}=await sb.auth.signInWithPassword({email:$("#em").value.trim(),password:$("#pw").value});
+  if(error){$("#err").textContent="Email o password errate";return}isAdm=true;cur="";await load();await loadHist()},
+ async logout(){await sb.auth.signOut();isAdm=false;CS.h=[];cur="";render()},
+ async ns(){const o=CS.s;if(o&&o.status!=="ended")await sb.from("sessions").update(endNow()).eq("id",o.id);
+  for(let i=0;i<6;i++){const{error}=await sb.from("sessions").insert({code:String(1000+Math.floor(Math.random()*9000))});if(!error)break}
+  am="";await load();await loadHist()},
+ async close(){await db(sb.from("sessions").update(endNow()).eq("id",CS.s.id));await load();await loadHist()},
+ tog(v){go(db(sb.from("players").update({allowed:!CS.s.allow[v]}).eq("id",v)))},
+ all(){go(db(sb.from("players").update({allowed:true}).eq("session_id",CS.s.id)))},
+ kick(v){go(db(sb.from("players").delete().eq("id",v)))},
+ diff(v){const p=get(K.p+v);go(db(sb.from("players").update({diff:DIFF[(DIFF.indexOf(p.diff||"normale")+1)%3]}).eq("id",v)))},
+ mode(v){am="";upd({mode:v,sel:Object.keys(GAMES).find(k=>!!GAMES[k].g===(v==="group")),duel:[]})},
+ duel(i,v){const d=[...(CS.s.duel||[])];d[i]=v||null;CS.s.duel=d;document.activeElement&&document.activeElement.blur();sb.from("sessions").update({duel:d}).eq("id",CS.s.id).then(()=>{})},
+ sel(v){upd({sel:v})},
+ end(){upd({status:"lobby"})},
+ async start(){const s=CS.s,ps=players();
+  if(s.mode==="duel"&&!(s.duel[0]&&s.duel[1]&&s.duel[0]!==s.duel[1]&&s.allow[s.duel[0]]&&s.allow[s.duel[1]])){am="Scegli due sfidanti diversi (abilitati).";render();return}
+  am="";const r=s.round+1,g=s.sel;
+  await db(sb.from("rounds").insert({session_id:s.id,round:r,game:g,name:GAMES[g].n,mode:s.mode}));
+  await db(sb.from("sessions").update({status:"playing",round:r,game:g}).eq("id",s.id));
+  part(s,ps).filter(p=>p.bot).forEach(p=>setTimeout(()=>{if(CS.s&&CS.s.round===r&&CS.s.status==="playing")sb.from("scores").insert({player_id:p.id,session_id:s.id,round:r,pts:GAMES[g].bot(),det:"demo"}).then(()=>{})},2500+Math.random()*6000));
+  await load();render()},
+ async bots(){const s=CS.s;await db(sb.from("players").insert((s.mode==="group"?["Squadra Rosa","Squadra Blu","Squadra Verde"]:["Anna","Luigi","Maria","Giorgio"]).map(name=>({session_id:s.id,name,allowed:true,bot:true}))));await load();render()},
+ dl(v){const x=v==="c"?snap(CS.s,players()):CS.h[v];if(x)csv(x)},
+ async join(){const name=$("#nm").value.trim().slice(0,20),code=$("#cd").value.trim();
+  if(!name){$("#err").textContent="Scrivi un nome, un soprannome o il nome della squadra";return}
+  const{data,error}=await sb.rpc("join_session",{p_code:code,p_name:name});
+  if(error||!data){$("#err").textContent="Codice non valido o sessione non attiva";return}
+  me=data.id;sec=data.secret;sid=data.sid;sessionStorage.setItem("ga:me",me);sessionStorage.setItem("ga:sec",sec);sessionStorage.setItem("ga:sid",sid);msg="";cur="";await load();render()},
+ async leave(){if(me)await sb.rpc("leave_session",{p_id:me,p_secret:sec});me=sec=sid=null;["ga:me","ga:sec","ga:sid"].forEach(k=>sessionStorage.removeItem(k));cur="";await load();render()}};
+document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(el&&A[el.dataset.a])A[el.dataset.a](el.dataset.v)});
+document.addEventListener("change",e=>{const el=e.target.closest("[data-c]");if(el)A[el.dataset.c](+el.dataset.i,el.value)});
+
+/* ============ VISTE ============ */
+function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?admin():login();player()}
+function home(){cur="home";app(`<div class="home">
+<button class="card pick" data-a="role" data-v="player"><h2>Sono un partecipante</h2><p>Entro con il codice della stanza e gioco (da solo, in sfida o in squadra).</p></button>
+<button class="card pick" data-a="role" data-v="admin"><h2>Sono l’animatore</h2><p>Gestisco stanza, modalità, dispositivi e classifica.</p></button>
+<button class="card pick" data-a="role" data-v="big"><h2>Schermo grande</h2><p>Per TV o proiettore: codice, gioco in corso e classifica.</p></button></div>
+<section class="card"><h2>Privacy e sicurezza</h2><ul><li>Nessun account, nessuna email, nessun accesso con Google o social.</li><li>Si usa solo un nome, un soprannome o il nome della squadra.</li><li>Entrano solo i dispositivi abilitati dall’animatore.</li><li>Solo l’animatore vede la lista e scarica i risultati.</li><li>Nome e punteggi sono salvati su un server protetto e cancellati dopo 30 giorni.</li></ul>
+</section>`)}
+function login(){if(cur==="login")return;cur="login";app(`<section class="card" style="max-width:480px;margin:auto"><h2>Accesso animatore</h2><input id="em" type="email" placeholder="Email animatore" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="err" id="err"></div><button class="b" data-a="login">Entra</button></section>`)}
+const hist=h=>`<section class="card" style="margin-top:16px"><h2>Sessioni salvate</h2>${h.length?h.map((x,i)=>`<div class="row"><span>${esc(x.at)} · stanza ${x.code} · ${MODES[x.mode]||""} · ${x.games.length} giochi</span><button class="b sm" data-a="dl" data-v="${i}">Scarica CSV</button></div><details data-k="${i}"><summary>Vincitori e classifica</summary><ul>${x.games.map(g=>`<li>${esc(g.n)}: ${g.rank[0]?"🏆 "+esc(g.rank[0].name)+" ("+g.rank[0].pts+")":"—"}</li>`).join("")}</ul>${lb(x.board)}</details>`).join(""):`<p class="mut">Nessuna sessione salvata.</p>`}</section>`;
+function admin(){if(document.activeElement&&document.activeElement.tagName==="SELECT")return;cur="adm";const s=get(K.s),h=get(K.h)||[];
+ if(!s){app(`<section class="card"><h2>Pannello animatore</h2><p>Crea una sessione: i partecipanti entrano con il codice.</p><button class="b" data-a="ns">Crea sessione</button> <button class="b alt" data-a="logout">Esci</button></section>${hist(h)}`);return}
+ const ps=players(),now=Date.now(),b=board(s,ps),en=part(s,ps),fin=en.filter(p=>String(s.round) in p.scores).length,G=s.mode==="group",lobby=s.status==="lobby",last=s.played[s.played.length-1];
+ const st=s.status==="playing"?`Gioco in corso: ${GAMES[s.game].n} (${fin}/${en.length} hanno finito)`:s.status==="ended"?"Sessione conclusa e salvata":"In attesa del prossimo gioco";
+ const sel=i=>`<select data-c="duel" data-i="${i}"><option value="">Sfidante ${i+1}…</option>${ps.filter(p=>s.allow[p.id]).map(p=>`<option value="${p.id}" ${s.duel[i]===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`;
+ const lr=last?rr(last,ps):[];
+ app(`<div class="adm"><div class="col">
+<section class="card"><h2>Stanza</h2><div class="code">${s.code}</div><p><span class="tag">${MODES[s.mode]}</span></p><p class="mut">${st}</p>
+ <button class="b alt sm" data-a="close" ${s.status==="ended"?"disabled":""}>Chiudi e salva</button> <button class="b sm" data-a="dl" data-v="c">Scarica CSV</button> <button class="b alt sm" data-a="ns">Nuova sessione</button> <button class="b alt sm" data-a="logout">Esci</button></section>
+<section class="card"><h2>Modalità</h2>${Object.entries(MODES).map(([k,v])=>`<button class="b sm ${k===s.mode?"on":"alt"}" data-a="mode" data-v="${k}" ${lobby?"":"disabled"}>${v}</button>`).join(" ")}
+ <p class="mut">${G?"Ogni dispositivo è una squadra: un tablet per gruppo, gli altri aiutano a voce.":s.mode==="duel"?"Sfida tra due partecipanti: gli altri tifano.":"Ognuno gioca per sé."}</p>
+ ${s.mode==="duel"?sel(0)+sel(1):""}<div class="err">${am}</div></section>
+<section class="card"><h2>Giochi</h2>${Object.entries(GAMES).filter(([k,g])=>!!g.g===G).map(([k,g])=>`<button class="b block ${k===s.sel?"":"alt"}" data-a="sel" data-v="${k}" ${lobby?"":"disabled"}>${g.n}<small>${g.d}</small></button>`).join("")}
+ ${s.status==="playing"?`<button class="b big" data-a="end">Termina gioco</button>`:`<button class="b big" data-a="start" ${s.status==="ended"?"disabled":""}>Avvia: ${GAMES[s.sel].n}</button>`}</section></div>
+<div class="col"><section class="card"><h2>${G?"Squadre":"Dispositivi"} (${ps.length})</h2>
+ ${ps.length?ps.map(p=>`<div class="row"><span><i class="dot2 ${p.bot||now-p.ts<25000?"on":""}"></i>${G?"👥 ":""}${esc(p.name)}</span><span><button class="b sm alt" data-a="diff" data-v="${p.id}" title="Ritmo di gioco">Ritmo: ${p.diff||"normale"}</button> <button class="b sm ${s.allow[p.id]?"on":"alt"}" data-a="tog" data-v="${p.id}">${s.allow[p.id]?"Abilitato":"Disabilitato"}</button> <button class="b sm alt" data-a="kick" data-v="${p.id}" aria-label="Rimuovi">✕</button></span></div>`).join(""):`<p class="mut">Nessun dispositivo collegato.</p>`}
+ <p><button class="b sm" data-a="all">Abilita tutti</button> <button class="b sm alt" data-a="bots">+ demo</button></p></section>
+${last?`<section class="card"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lr.length?`<p><b>${G?"Ha vinto la squadra":"Vince"}: ${esc(lr[0].name)}</b></p>`:""}${lb(lr)}</section>`:""}
+<section class="card"><h2>Classifica della sessione</h2>${lb(b)}</section></div></div>${hist(h)}`)}
+function big(){cur="big";const s=get(K.s);if(!s){app(`<section class="card center tv"><h2>In attesa dell’animatore…</h2></section>`);return}
+ const ps=players(),G=s.mode==="group",last=s.played[s.played.length-1],lr=last?rr(last,ps):[];
+ app(`<div class="tv"><section class="card center"><p class="mut">Entra con il codice</p><div class="code">${s.code}</div><p><span class="tag">${MODES[s.mode]}</span> ${s.status==="playing"?"· in corso: <b>"+esc(GAMES[s.game].n)+"</b>":s.status==="ended"?"· sessione conclusa":"· in attesa del prossimo gioco"}</p></section>
+ <section class="card" style="margin-top:16px"><h2>${G?"Classifica squadre":"Classifica"}</h2>${lb(board(s,ps))}</section>
+ ${s.status!=="playing"&&lr.length?`<section class="card" style="margin-top:16px"><h2>${esc(last.n)}: ${G?"vince":"vince"} ${esc(lr[0].name)}</h2>${lb(lr)}</section>`:""}</div>`)}
+function player(){const s=get(K.s),p=me&&get(K.p+me),G=s&&s.mode==="group",ps=players();
+ const ok=s&&p&&s.allow[me]&&s.status==="playing"&&(s.mode!=="duel"||s.duel.includes(me));
+ if(running!==null&&!(ok&&running===s.round)){stop&&stop();stop=null;running=null}else if(running!==null)return;
+ if(me&&!p){me=null;sessionStorage.removeItem("ga:me");msg="Sei stato rimosso o la sessione è cambiata."}
+ if(!me){if(cur==="join")return;cur="join";app(`<section class="card" style="max-width:480px;margin:auto"><h2>Entra nella sala</h2><input id="nm" placeholder="Nome, soprannome o nome della squadra" maxlength="20" autocomplete="off"><input id="cd" inputmode="numeric" maxlength="4" placeholder="Codice stanza (4 cifre)"><div class="err" id="err">${msg}</div><button class="b big" data-a="join">Entra</button><p class="mut">Nessun account né email. Se l’animatore sceglie i gruppi, scrivete il nome della squadra.</p></section>`);return}
+ cur="pl";const b=s?board(s,ps):[];
+ if(!s||s.status==="ended"){app(`<section class="card center"><h2>Sessione conclusa</h2>${lb(b,me)}<button class="b" data-a="leave">Esci</button></section>`);return}
+ if(!s.allow[me]){app(`<section class="card center"><h2>Attendi l’animatore</h2><p>${G?"La tua squadra è in lista.":"Il tuo dispositivo è in lista."} L’animatore deve abilitarti per farti entrare.</p><button class="b alt" data-a="leave">Esci</button></section>`);return}
+ if(ok&&!(String(s.round) in p.scores)){const g=GAMES[s.game],r=s.round,D=DV[p.diff||"normale"];running=r;
+  app(`<section class="card"><h2>${g.n}</h2><div id="stage" class="center"><p>${g.d}</p>${G?`<p>👥 Un componente usa il tablet, gli altri suggeriscono a voce!</p>`:""}<button class="b big" id="go">Inizia!</button></div></section>`);
+  $("#go").onclick=()=>{const st=$("#stage");st.innerHTML="";stop=g.f(st,async(pts,det)=>{await sb.rpc("submit_score",{p_id:me,p_secret:sec,p_round:r,p_pts:pts,p_det:det||""});stop=null;running=null;await load();render()},D)};return}
+ const last=s.played[s.played.length-1],mine=b.findIndex(x=>x.id===me)+1,playing=s.status==="playing";
+ let head="Sei in sala",txt="Aspetta che l’animatore avvii il prossimo gioco.";
+ if(playing&&!ok){const n=(s.duel||[]).map(id=>(ps.find(x=>x.id===id)||{}).name||"?");head="Sfida in corso";txt="Tocca a "+n.join(" e ")+": tifate per loro!"}
+ else if(playing){head=G?"La squadra ha finito! Attendete gli altri":"Hai finito! Attendi gli altri";txt=`Punti in questo gioco: <b>${p.scores[s.round]}</b>`}
+ app(`<section class="card center"><h2>${head}</h2><p>${txt}</p><p>${G?"Posizione della squadra":"La tua posizione"}: <b>${mine}°</b></p></section>
+ ${last?`<section class="card" style="margin-top:16px"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lb(rr(last,ps),me)}</section>`:""}
+ <section class="card" style="margin-top:16px"><h2>Classifica</h2>${lb(b,me)}<button class="b alt sm" data-a="leave">Esci dalla stanza</button></section>`)}
+(async()=>{
+ if(!window.SUPABASE_URL||!window.supabase||window.SUPABASE_URL.includes("TUO-PROGETTO")){app(`<section class="card"><h2>Configurazione mancante</h2><p>Compila <b>config.js</b> con URL e chiave anon di Supabase.</p></section>`);return}
+ sb=supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);
+ const{data}=await sb.auth.getSession();isAdm=!!data.session;
+ await load();render();live();loadHist();
+ setInterval(async()=>{if(me&&sec)sb.rpc("heartbeat",{p_id:me,p_secret:sec});await load();render()},8000)})();
+</script></body></html>
