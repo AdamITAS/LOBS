@@ -223,6 +223,7 @@ main{flex:1;width:100%}
 .pod{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:6px 0 14px}.pod>div{flex:1;max-width:140px;text-align:center;font-weight:700;overflow-wrap:anywhere}
 .pod i{display:grid;place-items:center;font-style:normal;font-size:1.7em;border-radius:12px 12px 0 0;margin-top:6px;color:#fff;background:var(--grad)}
 .tw{overflow-x:auto}.tbl{border-collapse:collapse;width:100%;font-size:.82em}.tbl th,.tbl td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:center;white-space:nowrap}.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl .best{background:var(--ac2-soft);font-weight:800;color:var(--ac2)}.tbl .tot{font-weight:800}
+.greet{font-weight:600;margin:0 0 14px;font-size:1.05em}
 </style></head><body>
 <header class="bar"><span class="brand"><span class="brand-logo">🎲</span>LOBS</span><button class="b alt sm" data-a="home">Menu</button></header>
 
@@ -376,7 +377,7 @@ const MODES={single:"Singoli",duel:"1 contro 1",group:"Gruppi"};
 const DIFF=["lento","normale","veloce"],DV={lento:1.6,normale:1,veloce:.75};
 
 /* ============ STATO E AZIONI ============ */
-let role=sessionStorage.getItem("ga:role"),isAdm=false,me=sessionStorage.getItem("ga:me"),sec=sessionStorage.getItem("ga:sec"),sid=sessionStorage.getItem("ga:sid"),cur="",running=null,stop=null,msg="",am="",showPw=false,pwDone=true,showRs=false,doneR={};
+let role=sessionStorage.getItem("ga:role"),isAdm=false,me=sessionStorage.getItem("ga:me"),sec=sessionStorage.getItem("ga:sec"),sid=sessionStorage.getItem("ga:sid"),cur="",running=null,stop=null,msg="",am="",showPw=false,pwDone=true,showRs=false,showSet=false,opEmail="",doneR={};
 const db=async p=>{const{error}=await p;if(error){console.error(error);am="Errore: "+error.message}};
 const go=async f=>{await f;await load();render()};
 const upd=patch=>go(db(sb.from("sessions").update(patch).eq("id",CS.s.id)));
@@ -387,7 +388,7 @@ const A={
  async login(){const bb=$("#lbtn");if(bb){bb.disabled=true;bb.textContent="Accesso…"}
   const{error}=await sb.auth.signInWithPassword({email:$("#em").value.trim(),password:$("#pw").value});
   if(error){if(bb){bb.disabled=false;bb.textContent="Entra"}showErr("#err","Email o password errate");return}
-  isAdm=true;cur="";const{data:ud}=await sb.auth.getUser();pwDone=!!(ud&&ud.user&&ud.user.user_metadata&&ud.user.user_metadata.pw_changed);showPw=!pwDone;await load();await loadHist();toast("Accesso effettuato. Buon divertimento!","success","🔓")},
+  isAdm=true;cur="";const{data:ud}=await sb.auth.getUser();pwDone=!!(ud&&ud.user&&ud.user.user_metadata&&ud.user.user_metadata.pw_changed);opEmail=(ud&&ud.user&&ud.user.email)||"";showPw=!pwDone;await load();await loadHist();toast(salut()+", Operatore "+opName(),"success","🔓")},
  forgot(){showRs=true;cur="";render()},
  rsx(){showRs=false;cur="";render()},
  async reset(){const em=$("#rs0").value.trim(),o=$("#rs1").value,n=$("#rs2").value,c=$("#rs3").value,b=$("#rbtn");
@@ -401,6 +402,8 @@ const A={
  eye(v){const i=$("#"+v);if(i)i.type=i.type==="password"?"text":"password"},
  pw(){showPw=true;cur="";render()},
  pwx(){showPw=false;cur="";render()},
+ set(){showSet=true;cur="";render()},
+ setx(){showSet=false;cur="";render()},
  async changePw(){const o=$("#pw0").value,n=$("#pw1").value,c=$("#pw2").value,b=$("#pbtn"),reset=()=>{b.disabled=false;b.textContent="Salva password"};
   if(!o){showErr("#err","Scrivi la password attuale");return}
   if(n.length<8){showErr("#err","La nuova password deve avere almeno 8 caratteri");return}
@@ -413,7 +416,7 @@ const A={
   const{error}=await sb.auth.updateUser({password:n,data:{pw_changed:true}});
   if(error){reset();showErr("#err","Non riesco a cambiarla: "+error.message);return}
   if(!pwDone)await sb.rpc("store_initial",{p_initial:o});pwDone=true;showPw=false;cur="";render();toast("Password aggiornata. Usa la nuova al prossimo accesso.","success","🔑")},
- async logout(){await sb.auth.signOut();isAdm=false;showPw=false;CS.h=[];knownP={};syncedP=false;syncedScores=false;cur="";render()},
+ async logout(){await sb.auth.signOut();isAdm=false;showPw=false;showSet=false;opEmail="";CS.h=[];knownP={};syncedP=false;syncedScores=false;cur="";render()},
  async ns(){const o=CS.s;if(o&&o.status!=="ended")await sb.from("sessions").update(endNow()).eq("id",o.id);
   for(let i=0;i<6;i++){const{error}=await sb.from("sessions").insert({code:String(1000+Math.floor(Math.random()*9000))});if(!error)break}
   am="";syncedP=false;syncedScores=false;finSeen={};allFinRound=null;await load();await loadHist();
@@ -453,7 +456,7 @@ document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(e
 document.addEventListener("change",e=>{const el=e.target.closest("[data-c]");if(el)A[el.dataset.c](+el.dataset.i,el.value)});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="em"||e.target.id==="pw"))A.login();if(e.key==="Enter"&&/^rs[0-3]$/.test(e.target.id))A.reset();if(e.key==="Enter"&&/^pw[012]$/.test(e.target.id))A.changePw();if(e.key==="Escape"){const r=$("#modal-root");if(r&&r.firstChild)r.innerHTML=""}});
 /* ============ VISTE ============ */
-function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?(showPw?pwView():admin()):(showRs?rsView():login());player()}
+function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?(showPw?pwView():showSet?setView():admin()):(showRs?rsView():login());player()}
 function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>LOBS</h1><p class="mut">QUIZ, RIFLESSI e SFIDE di gruppo - più punti = meglio è</p></div>
 <div class="home">
 <button class="card pick" data-a="role" data-v="player"><span class="pick-ico">📱</span><h2>Sono un partecipante</h2><p>Entro con il codice della stanza e gioco (da solo, in sfida o in squadra).</p><span class="pick-cta">Entra →</span></button>
@@ -464,11 +467,22 @@ function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">�
 function login(){if(cur==="login")return;cur="login";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔐</div><h2>Accesso animatore</h2><p class="mut">Entra per gestire la stanza.</p><p class="notop">Se non sei un operatore, torna indietro e seleziona «Sono un partecipante».</p></div>
 <input id="em" type="email" placeholder="Email animatore" autocomplete="username"><div class="pwrow"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button type="button" data-a="eye" data-v="pw" aria-label="Mostra o nascondi password">👁️</button></div>
 <div class="err" id="err"></div><button class="b big" id="lbtn" data-a="login">Entra</button><p style="margin-top:10px"><button class="b alt sm" data-a="forgot">Password dimenticata?</button> <button class="b alt sm" data-a="home">← Torna indietro</button></p></section>`)}
+const opName=()=>(opEmail.split("@")[0]||"").split(/[._-]+/).filter(x=>x&&!/\d/.test(x)).map(x=>x[0].toUpperCase()+x.slice(1).toLowerCase()).join(" ");
+const salut=()=>{const h=new Date().getHours();return h>=5&&h<14?"Buongiorno":h>=14&&h<18?"Buon pomeriggio":"Buonasera"};
+const greet=()=>`<p class="greet">👋 ${salut()}, Operatore${opName()?" <b>"+esc(opName())+"</b>":""}</p>`;
+function setView(){if(cur==="set")return;cur="set";app(`<section class="card" style="max-width:560px;margin:4vh auto 0"><div class="chead"><h2>⚙️ Impostazioni</h2><button class="b sm alt" data-a="setx">← Torna al pannello</button></div>
+<p class="mut">Account: <b>${esc(opName()||"Operatore")}</b><br>${esc(opEmail)}</p>
+<h2 style="margin-top:18px">🔑 Password</h2>
+<p>La password che scegli non è visibile a nessuno nel sito. Cambiala quando vuoi.</p>
+<button class="b" data-a="pw">Cambia password</button>
+<h2 style="margin-top:18px">🛡️ Consigli per una password sicura</h2>
+<ul class="check"><li>Usa una password <b>mai usata</b> altrove (email, social, scuola…): se una viene scoperta, le altre restano al sicuro.</li><li>Meglio lunga (almeno 12 caratteri): una frase facile da ricordare vale più di una parola corta e complicata.</li><li>Evita nomi, date di nascita e cose come «Password123».</li><li>Non condividerla e non scriverla dove altri possono leggerla.</li><li>Conserva la <b>password iniziale</b> che ti hanno dato: serve a reimpostarne una nuova se dimentichi quella scelta.</li><li>Su un dispositivo condiviso premi «Esci» a fine sessione.</li></ul>
+<p style="margin-top:14px"><button class="b alt sm" data-a="logout">Esci</button></p></section>`)}
 function pwView(){if(cur==="pw")return;cur="pw";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔑</div><h2>${pwDone?"Cambia password":"Scegli la tua password"}</h2><p class="mut">${pwDone?"Scrivi quella attuale e poi la nuova.":"Questo account è stato creato per te: imposta ora una password personale, così la conosci solo tu. Conserva quella iniziale: ti servirà se dimentichi la nuova."}</p></div>
 <div class="pwrow"><input id="pw0" type="password" placeholder="Password attuale" autocomplete="current-password"><button type="button" data-a="eye" data-v="pw0" aria-label="Mostra o nascondi">👁️</button></div>
 <div class="pwrow"><input id="pw1" type="password" placeholder="Nuova password (min. 8 caratteri)" autocomplete="new-password"><button type="button" data-a="eye" data-v="pw1" aria-label="Mostra o nascondi">👁️</button></div>
 <input id="pw2" type="password" placeholder="Ripeti la nuova password" autocomplete="new-password">
-<div class="err" id="err"></div><button class="b big" id="pbtn" data-a="changePw">Salva password</button><p><button class="b alt sm" data-a="pwx">${pwDone?"Annulla":"Più tardi"}</button></p></section>`)}
+<p class="mut" style="font-size:.85em;margin:4px 0">💡 Scegli una password <b>mai usata altrove</b>, meglio se lunga (12+ caratteri).</p><div class="err" id="err"></div><button class="b big" id="pbtn" data-a="changePw">Salva password</button><p><button class="b alt sm" data-a="pwx">${pwDone?"Annulla":"Più tardi"}</button></p></section>`)}
 function rsView(){if(cur==="rs")return;cur="rs";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔁</div><h2>Password dimenticata</h2><p class="mut">Scrivi la tua email e la <b>password iniziale</b> che ti hanno dato al primo accesso, poi scegli una nuova password.</p></div>
 <input id="rs0" type="email" placeholder="Email animatore" autocomplete="username" autocapitalize="none" spellcheck="false">
 <div class="pwrow"><input id="rs1" type="password" placeholder="Password iniziale" autocomplete="off"><button type="button" data-a="eye" data-v="rs1" aria-label="Mostra o nascondi">👁️</button></div>
@@ -481,7 +495,7 @@ const podium=b=>{if(!b.length||b[0].pts<=0)return"";const P=pos(b),t=b.slice(0,3
 const matrix=(s,ps)=>{const en=ps.filter(p=>s.allow[p.id]);if(!s.played.length||!en.length)return"";const b=board(s,ps),P=pos(b),best=s.played.map(x=>Math.max(...en.map(p=>p.scores[x.r]??-1)));
  return`<section class="card"><h2>📊 Riepilogo per gioco</h2><div class="tw"><table class="tbl"><tr><th>#</th><th>Nome</th>${s.played.map((x,k)=>`<th>${(GAMES[x.g]||{}).i||k+1}<small>${esc(x.n)}</small></th>`).join("")}<th>Totale</th></tr>${b.map((r,i)=>{const p=en.find(q=>q.id===r.id);return`<tr><td>${P[i]}</td><td>${esc(r.name)}</td>${s.played.map((x,k)=>{const v=p.scores[x.r];return`<td class="${v!=null&&v>0&&v===best[k]?"best":""}">${v==null?"—":v}</td>`}).join("")}<td class="tot">${r.pts}</td></tr>`}).join("")}</table></div><p class="mut">In verde il miglior punteggio di ogni gioco.</p></section>`};
 function admin(){if(document.activeElement&&document.activeElement.tagName==="SELECT")return;cur="adm";const s=get(K.s),h=get(K.h)||[];
- if(!s){app(`<section class="card center" style="max-width:520px;margin:4vh auto 0"><div class="big-ico">🎬</div><h2>Pannello animatore</h2><p class="mut">Crea una sessione: i partecipanti entrano con il codice che appare qui.</p><button class="b big pulse" data-a="ns" style="margin:14px 0 4px">Crea sessione</button><p><button class="b alt sm" data-a="pw">🔑 Password</button> <button class="b alt sm" data-a="logout">Esci</button></p></section>${hist(h)}`);return}
+ if(!s){app(`<section class="card center" style="max-width:520px;margin:4vh auto 0"><div class="big-ico">🎬</div>${greet()}<h2>Pannello animatore</h2><p class="mut">Crea una sessione: i partecipanti entrano con il codice che appare qui.</p><button class="b big pulse" data-a="ns" style="margin:14px 0 4px">Crea sessione</button><p><button class="b alt sm" data-a="set">⚙️ Impostazioni</button> <button class="b alt sm" data-a="logout">Esci</button></p></section>${hist(h)}`);return}
  const ps=players(),now=Date.now(),b=board(s,ps),en=part(s,ps),fin=en.filter(p=>String(s.round) in p.scores).length,G=s.mode==="group",lobby=s.status==="lobby",last=s.played[s.played.length-1];
  const st=s.status==="playing"?`Gioco in corso: ${GAMES[s.game].n} (${fin}/${en.length} hanno finito)`:s.status==="ended"?"Sessione conclusa e salvata":"In attesa del prossimo gioco";
  const sel=i=>`<select data-c="duel" data-i="${i}"><option value="">Sfidante ${i+1}…</option>${ps.filter(p=>s.allow[p.id]).map(p=>`<option value="${p.id}" ${s.duel[i]===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`;
@@ -492,12 +506,12 @@ function admin(){if(document.activeElement&&document.activeElement.tagName==="SE
   <p class="mut"><b style="color:var(--fg)">${fin}</b> di <b style="color:var(--fg)">${en.length}</b> hanno finito</p>
   ${en.map(p=>{const d=String(s.round) in p.scores;return `<div class="row"><span><i class="dot2 ${d?"on":""}"></i>${esc(p.name)}</span><span class="${d?"ok":"mut"}">${d?"✅ Finito · "+p.scores[s.round]+" pt":"⏳ In gioco…"}</span></div>`}).join("")}
   ${en.length&&fin===en.length?`<div class="banner-ok">🎉 Tutti hanno finito! Premi «Termina gioco» per vedere i risultati e tornare alla lobby.</div>`:""}</section>`:"";
- app(`<div class="adm"><div class="col">
+ app(`${greet()}<div class="adm"><div class="col">
 <section class="card"><div class="chead"><h2>Stanza</h2><button class="b sm alt" data-a="copycode">📋 Copia codice</button></div>
  <div class="code">${s.code}</div>
  <p><span class="tag">${MODES[s.mode]}</span> <span class="tag st ${s.status}">${s.status==="playing"?"In corso":s.status==="ended"?"Conclusa":"In lobby"}</span></p>
  <p class="mut">${st}</p><p class="mut">I partecipanti entrano con questo codice da telefono o tablet.</p>
- <div class="btnrow"><button class="b alt sm" data-a="close" ${s.status==="ended"?"disabled":""}>Chiudi e salva</button> <button class="b sm" data-a="dl" data-v="c">Scarica CSV</button> <button class="b alt sm" data-a="ns">Nuova sessione</button> <button class="b alt sm" data-a="pw">🔑 Password</button> <button class="b alt sm" data-a="logout">Esci</button></div></section>
+ <div class="btnrow"><button class="b alt sm" data-a="close" ${s.status==="ended"?"disabled":""}>Chiudi e salva</button> <button class="b sm" data-a="dl" data-v="c">Scarica CSV</button> <button class="b alt sm" data-a="ns">Nuova sessione</button> <button class="b alt sm" data-a="set">⚙️ Impostazioni</button> <button class="b alt sm" data-a="logout">Esci</button></div></section>
 <section class="card"><h2>Modalità</h2><div class="btnrow" style="margin:2px 0 8px">${Object.entries(MODES).map(([k,v])=>`<button class="b sm ${k===s.mode?"on":"alt"}" data-a="mode" data-v="${k}" ${lobby?"":"disabled"}>${v}</button>`).join("")}</div>
  <p class="mut">${G?"Ogni dispositivo è una squadra: un tablet per gruppo, gli altri aiutano a voce.":s.mode==="duel"?"Sfida tra due partecipanti: gli altri tifano.":"Ognuno gioca per sé."}</p>
  ${s.mode==="duel"?sel(0)+sel(1):""}<div class="err">${am}</div></section>
@@ -559,7 +573,7 @@ function ok_running_check(s,p){return s&&p&&s.allow[me]&&s.status==="playing"&&r
 (async()=>{
  if(!window.SUPABASE_URL||!window.supabase||window.SUPABASE_URL.includes("TUO-PROGETTO")){app(`<section class="card" style="max-width:520px;margin:8vh auto 0"><div class="big-ico">⚙️</div><h2>Configurazione mancante</h2><p class="mut">Compila <b>config.js</b> con URL e chiave anon di Supabase.</p></section>`);return}
  sb=supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);
- const{data}=await sb.auth.getSession();isAdm=!!data.session;
+ const{data}=await sb.auth.getSession();isAdm=!!data.session;opEmail=(data.session&&data.session.user.email)||"";
  await load();render();live();loadHist();
  setInterval(async()=>{if(me&&sec)sb.rpc("heartbeat",{p_id:me,p_secret:sec});await load();render()},8000)})()
 </script></body></html>
