@@ -215,6 +215,14 @@ main{flex:1;width:100%}
 .foot b{color:var(--fg);font-family:var(--fd)}
 .foot .sep{display:inline-block;margin:0 6px;opacity:.5}
 
+.notop{color:#c62d32;font-size:.74em;font-weight:600;margin:6px 0 12px;line-height:1.35}
+.pwrow{position:relative}.pwrow input{padding-right:48px}.pwrow button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:1.1em;cursor:pointer;padding:8px}
+@keyframes finin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+.fin{text-align:center;padding:22px 8px;animation:finin .5s ease both}.fin h2{font-size:1.6em;margin:6px 0}.fin-ico{font-size:3.4em}.fin-pts{font-size:1.5em;font-weight:800;color:var(--ac2);margin:4px 0}
+.fade-out{opacity:0;transition:opacity .5s ease}.fadein{animation:finin .7s ease both}
+.pod{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:6px 0 14px}.pod>div{flex:1;max-width:140px;text-align:center;font-weight:700;overflow-wrap:anywhere}
+.pod i{display:grid;place-items:center;font-style:normal;font-size:1.7em;border-radius:12px 12px 0 0;margin-top:6px;color:#fff;background:var(--grad)}
+.tw{overflow-x:auto}.tbl{border-collapse:collapse;width:100%;font-size:.82em}.tbl th,.tbl td{padding:7px 8px;border-bottom:1px solid var(--bd);text-align:center;white-space:nowrap}.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl .best{background:var(--ac2-soft);font-weight:800;color:var(--ac2)}.tbl .tot{font-weight:800}
 </style></head><body>
 <header class="bar"><span class="brand"><span class="brand-logo">🎲</span>LOBS</span><button class="b alt sm" data-a="home">Menu</button></header>
 
@@ -294,7 +302,8 @@ const sum=p=>Object.values(p.scores||{}).reduce((a,b)=>a+b,0);
 const board=(s,ps)=>ps.filter(p=>s.allow[p.id]).map(p=>({id:p.id,name:p.name,pts:sum(p)})).sort((a,b)=>b.pts-a.pts);
 const part=(s,ps)=>ps.filter(p=>s.allow[p.id]&&(s.mode!=="duel"||s.duel.includes(p.id)));
 const rr=(x,ps)=>ps.filter(p=>p.scores&&x.r in p.scores).map(p=>({id:p.id,name:p.name,pts:p.scores[x.r],det:(p.det||{})[x.r]||""})).sort((a,b)=>b.pts-a.pts);
-const lb=(b,m)=>b.length?`<ol class="lb">${b.map((x,i)=>`<li class="${x.id===m?"me":""}" style="--w:${b[0].pts>0?Math.max(10,Math.round(x.pts/b[0].pts*100)):0}%;--i:${i}"><b>${i<3?["🥇","🥈","🥉"][i]:i+1}</b><span>${esc(x.name)}${x.det?`<small>${esc(x.det)}</small>`:""}</span><em>${x.pts}</em></li>`).join("")}</ol>`:`<p class="mut">Ancora nessun punteggio.</p>`;
+const pos=b=>{let p=0;return b.map((x,i)=>(!i||x.pts!==b[i-1].pts?p=i+1:p))};
+const lb=(b,m)=>b.length?`<ol class="lb">${b.map((x,i)=>`<li class="${x.id===m?"me":""}" style="--w:${b[0].pts>0?Math.max(10,Math.round(x.pts/b[0].pts*100)):0}%;--i:${i}"><b>${pos(b)[i]<=3&&x.pts>0?["🥇","🥈","🥉"][pos(b)[i]-1]:pos(b)[i]}</b><span>${esc(x.name)}${x.det?`<small>${esc(x.det)}</small>`:""}</span><em>${x.pts}</em></li>`).join("")}</ol>`:`<p class="mut">Ancora nessun punteggio.</p>`;
 const snap=(s,ps)=>({at:new Date(s.ended||Date.now()).toLocaleString("it-IT"),code:s.code,mode:s.mode,games:s.played.map(x=>({n:x.n,m:x.m,rank:rr(x,ps)})),board:board(s,ps)});
 function csv(x){const L=[["Partita","Gioco","Posizione","Nome","Punti","Dettaglio"]];
  x.games.forEach((g,i)=>g.rank.forEach((r,j)=>L.push([i+1,g.n,j+1,r.name,r.pts,r.det])));
@@ -310,12 +319,12 @@ function gReflex(el,done,D){const pad=document.createElement("div");pad.classNam
  pad.onpointerdown=()=>{if(st==0){clearTimeout(to);st=2;show("#8a6d00","Troppo presto! 0 punti");to2=setTimeout(next,1300)}
   else if(st==1){const ms=Math.round(performance.now()-t0),p=Math.max(0,Math.round(1000-ms/D));pts+=p;st=2;show("#2f6fed",ms+" ms · +"+p+" punti");to2=setTimeout(next,1300)}};
  next();return()=>{clearTimeout(to);clearTimeout(to2)}}
-function gTarget(el,done,D){let pts=0,t=20,sp;const hud=document.createElement("div"),box=document.createElement("div");hud.className="hud";box.className="field";el.append(hud,box);
+function gTarget(el,done,D){let pts=0,t=20,sp,over=false;const hud=document.createElement("div"),box=document.createElement("div");hud.className="hud";box.className="field";el.append(hud,box);
  const up=()=>hud.innerHTML=`<span>Tempo: ${t}s</span><span>Punti: ${pts}</span>`;
- const spawn=()=>{clearTimeout(sp);box.innerHTML="";const d=document.createElement("button");d.className="dot";d.setAttribute("aria-label","Bersaglio");
+ const spawn=()=>{if(over)return;clearTimeout(sp);box.innerHTML="";const d=document.createElement("button");d.className="dot";d.setAttribute("aria-label","Bersaglio");
   d.style.left=Math.max(0,Math.random()*(box.clientWidth-96))+"px";d.style.top=Math.max(0,Math.random()*(box.clientHeight-96))+"px";
-  d.onpointerdown=()=>{pts+=10;up();spawn()};box.append(d);sp=setTimeout(spawn,2200*D)};
- const clean=()=>{clearInterval(iv);clearTimeout(sp)};
+  d.onpointerdown=()=>{if(over)return;pts+=10;up();spawn()};box.append(d);sp=setTimeout(spawn,2200*D)};
+ const clean=()=>{over=true;clearInterval(iv);clearTimeout(sp);box.innerHTML=""};
  const iv=setInterval(()=>{t--;up();if(t<=0){clean();done(pts,pts/10+" bersagli")}},1000);up();spawn();return clean}
 function gColor(el,done,D){let n=0,pts=0,to;const box=document.createElement("div");el.append(box);
  const next=()=>{if(n==10){done(pts,pts/100+"/10 giuste");return}n++;const t=SH[Math.random()*4|0];
@@ -367,7 +376,7 @@ const MODES={single:"Singoli",duel:"1 contro 1",group:"Gruppi"};
 const DIFF=["lento","normale","veloce"],DV={lento:1.6,normale:1,veloce:.75};
 
 /* ============ STATO E AZIONI ============ */
-let role=sessionStorage.getItem("ga:role"),isAdm=false,me=sessionStorage.getItem("ga:me"),sec=sessionStorage.getItem("ga:sec"),sid=sessionStorage.getItem("ga:sid"),cur="",running=null,stop=null,msg="",am="";
+let role=sessionStorage.getItem("ga:role"),isAdm=false,me=sessionStorage.getItem("ga:me"),sec=sessionStorage.getItem("ga:sec"),sid=sessionStorage.getItem("ga:sid"),cur="",running=null,stop=null,msg="",am="",showPw=false,pwDone=true,showRs=false,doneR={};
 const db=async p=>{const{error}=await p;if(error){console.error(error);am="Errore: "+error.message}};
 const go=async f=>{await f;await load();render()};
 const upd=patch=>go(db(sb.from("sessions").update(patch).eq("id",CS.s.id)));
@@ -378,8 +387,33 @@ const A={
  async login(){const bb=$("#lbtn");if(bb){bb.disabled=true;bb.textContent="Accesso…"}
   const{error}=await sb.auth.signInWithPassword({email:$("#em").value.trim(),password:$("#pw").value});
   if(error){if(bb){bb.disabled=false;bb.textContent="Entra"}showErr("#err","Email o password errate");return}
-  isAdm=true;cur="";await load();await loadHist();toast("Accesso effettuato. Buon divertimento!","success","🔓")},
- async logout(){await sb.auth.signOut();isAdm=false;CS.h=[];knownP={};syncedP=false;syncedScores=false;cur="";render()},
+  isAdm=true;cur="";const{data:ud}=await sb.auth.getUser();pwDone=!!(ud&&ud.user&&ud.user.user_metadata&&ud.user.user_metadata.pw_changed);showPw=!pwDone;await load();await loadHist();toast("Accesso effettuato. Buon divertimento!","success","🔓")},
+ forgot(){showRs=true;cur="";render()},
+ rsx(){showRs=false;cur="";render()},
+ async reset(){const em=$("#rs0").value.trim(),o=$("#rs1").value,n=$("#rs2").value,c=$("#rs3").value,b=$("#rbtn");
+  if(!em||!o){showErr("#err","Scrivi la tua email e la password iniziale");return}
+  if(n.length<8){showErr("#err","La nuova password deve avere almeno 8 caratteri");return}
+  if(n!==c){showErr("#err","Le due nuove password non coincidono");return}
+  b.disabled=true;b.textContent="Controllo…";
+  const{data,error}=await sb.rpc("reset_with_initial",{p_email:em,p_initial:o,p_new:n});
+  if(error||!data){b.disabled=false;b.textContent="Imposta nuova password";showErr("#err","Email o password iniziale non corrette (dopo 5 errori si blocca per 15 minuti)");return}
+  showRs=false;cur="";render();toast("Password reimpostata. Ora accedi con la nuova.","success","🔑")},
+ eye(v){const i=$("#"+v);if(i)i.type=i.type==="password"?"text":"password"},
+ pw(){showPw=true;cur="";render()},
+ pwx(){showPw=false;cur="";render()},
+ async changePw(){const o=$("#pw0").value,n=$("#pw1").value,c=$("#pw2").value,b=$("#pbtn"),reset=()=>{b.disabled=false;b.textContent="Salva password"};
+  if(!o){showErr("#err","Scrivi la password attuale");return}
+  if(n.length<8){showErr("#err","La nuova password deve avere almeno 8 caratteri");return}
+  if(n!==c){showErr("#err","Le due nuove password non coincidono");return}
+  if(n===o){showErr("#err","Scegli una password diversa da quella attuale");return}
+  b.disabled=true;b.textContent="Salvataggio…";
+  const{data:u}=await sb.auth.getUser(),em=u&&u.user&&u.user.email;
+  const r0=await sb.auth.signInWithPassword({email:em,password:o});
+  if(r0.error){reset();showErr("#err","La password attuale non è corretta");return}
+  const{error}=await sb.auth.updateUser({password:n,data:{pw_changed:true}});
+  if(error){reset();showErr("#err","Non riesco a cambiarla: "+error.message);return}
+  if(!pwDone)await sb.rpc("store_initial",{p_initial:o});pwDone=true;showPw=false;cur="";render();toast("Password aggiornata. Usa la nuova al prossimo accesso.","success","🔑")},
+ async logout(){await sb.auth.signOut();isAdm=false;showPw=false;CS.h=[];knownP={};syncedP=false;syncedScores=false;cur="";render()},
  async ns(){const o=CS.s;if(o&&o.status!=="ended")await sb.from("sessions").update(endNow()).eq("id",o.id);
   for(let i=0;i<6;i++){const{error}=await sb.from("sessions").insert({code:String(1000+Math.floor(Math.random()*9000))});if(!error)break}
   am="";syncedP=false;syncedScores=false;finSeen={};allFinRound=null;await load();await loadHist();
@@ -417,9 +451,9 @@ const A={
  async leave(){if(me)await sb.rpc("leave_session",{p_id:me,p_secret:sec});me=sec=sid=null;["ga:me","ga:sec","ga:sid"].forEach(k=>sessionStorage.removeItem(k));cur="";await load();render()}};
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(el&&A[el.dataset.a])A[el.dataset.a](el.dataset.v)});
 document.addEventListener("change",e=>{const el=e.target.closest("[data-c]");if(el)A[el.dataset.c](+el.dataset.i,el.value)});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){const r=$("#modal-root");if(r&&r.firstChild)r.innerHTML=""}});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="em"||e.target.id==="pw"))A.login();if(e.key==="Enter"&&/^rs[0-3]$/.test(e.target.id))A.reset();if(e.key==="Enter"&&/^pw[012]$/.test(e.target.id))A.changePw();if(e.key==="Escape"){const r=$("#modal-root");if(r&&r.firstChild)r.innerHTML=""}});
 /* ============ VISTE ============ */
-function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?admin():login();player()}
+function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?(showPw?pwView():admin()):(showRs?rsView():login());player()}
 function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>LOBS</h1><p class="mut">QUIZ, RIFLESSI e SFIDE di gruppo - più punti = meglio è</p></div>
 <div class="home">
 <button class="card pick" data-a="role" data-v="player"><span class="pick-ico">📱</span><h2>Sono un partecipante</h2><p>Entro con il codice della stanza e gioco (da solo, in sfida o in squadra).</p><span class="pick-cta">Entra →</span></button>
@@ -427,12 +461,27 @@ function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">�
 <button class="card pick" data-a="role" data-v="big"><span class="pick-ico">📺</span><h2>Schermo grande</h2><p>Per TV o proiettore: codice, gioco in corso e classifica.</p><span class="pick-cta">Apri →</span></button></div>
 <section class="card"><h2>🔒 Privacy e sicurezza</h2><ul class="check"><li>Nessun account, nessuna email, nessun accesso con Google o social.</li><li>Si usa solo un nome, un soprannome o il nome della squadra.</li><li>Entrano solo i dispositivi abilitati dall’animatore.</li><li>Solo l’animatore vede la lista e scarica i risultati.</li><li>Nome e punteggi sono salvati su un server protetto e cancellati dopo 30 giorni.</li></ul>
 </section>`)}
-function login(){if(cur==="login")return;cur="login";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔐</div><h2>Accesso animatore</h2><p class="mut">Entra per gestire la stanza.</p></div>
-<input id="em" type="email" placeholder="Email animatore" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password">
-<div class="err" id="err"></div><button class="b big" id="lbtn" data-a="login">Entra</button></section>`)}
+function login(){if(cur==="login")return;cur="login";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔐</div><h2>Accesso animatore</h2><p class="mut">Entra per gestire la stanza.</p><p class="notop">Se non sei un operatore, torna indietro e seleziona «Sono un partecipante».</p></div>
+<input id="em" type="email" placeholder="Email animatore" autocomplete="username"><div class="pwrow"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button type="button" data-a="eye" data-v="pw" aria-label="Mostra o nascondi password">👁️</button></div>
+<div class="err" id="err"></div><button class="b big" id="lbtn" data-a="login">Entra</button><p style="margin-top:10px"><button class="b alt sm" data-a="forgot">Password dimenticata?</button> <button class="b alt sm" data-a="home">← Torna indietro</button></p></section>`)}
+function pwView(){if(cur==="pw")return;cur="pw";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔑</div><h2>${pwDone?"Cambia password":"Scegli la tua password"}</h2><p class="mut">${pwDone?"Scrivi quella attuale e poi la nuova.":"Questo account è stato creato per te: imposta ora una password personale, così la conosci solo tu. Conserva quella iniziale: ti servirà se dimentichi la nuova."}</p></div>
+<div class="pwrow"><input id="pw0" type="password" placeholder="Password attuale" autocomplete="current-password"><button type="button" data-a="eye" data-v="pw0" aria-label="Mostra o nascondi">👁️</button></div>
+<div class="pwrow"><input id="pw1" type="password" placeholder="Nuova password (min. 8 caratteri)" autocomplete="new-password"><button type="button" data-a="eye" data-v="pw1" aria-label="Mostra o nascondi">👁️</button></div>
+<input id="pw2" type="password" placeholder="Ripeti la nuova password" autocomplete="new-password">
+<div class="err" id="err"></div><button class="b big" id="pbtn" data-a="changePw">Salva password</button><p><button class="b alt sm" data-a="pwx">${pwDone?"Annulla":"Più tardi"}</button></p></section>`)}
+function rsView(){if(cur==="rs")return;cur="rs";app(`<section class="card" style="max-width:460px;margin:6vh auto 0"><div class="center"><div class="big-ico">🔁</div><h2>Password dimenticata</h2><p class="mut">Scrivi la tua email e la <b>password iniziale</b> che ti hanno dato al primo accesso, poi scegli una nuova password.</p></div>
+<input id="rs0" type="email" placeholder="Email animatore" autocomplete="username" autocapitalize="none" spellcheck="false">
+<div class="pwrow"><input id="rs1" type="password" placeholder="Password iniziale" autocomplete="off"><button type="button" data-a="eye" data-v="rs1" aria-label="Mostra o nascondi">👁️</button></div>
+<div class="pwrow"><input id="rs2" type="password" placeholder="Nuova password (min. 8 caratteri)" autocomplete="new-password"><button type="button" data-a="eye" data-v="rs2" aria-label="Mostra o nascondi">👁️</button></div>
+<input id="rs3" type="password" placeholder="Ripeti la nuova password" autocomplete="new-password">
+<div class="err" id="err"></div><button class="b big" id="rbtn" data-a="reset">Imposta nuova password</button><p><button class="b alt sm" data-a="rsx">← Torna al login</button></p></section>`)}
 const hist=h=>`<section class="card" style="margin-top:16px"><h2>🗂️ Sessioni salvate</h2>${h.length?h.map((x,i)=>`<div class="row"><span>${esc(x.at)} · stanza ${x.code} · ${MODES[x.mode]||""} · ${x.games.length} giochi</span><button class="b sm" data-a="dl" data-v="${i}">⬇ CSV</button></div><details data-k="${i}"><summary>Vincitori e classifica</summary><ul class="check">${x.games.map(g=>`<li>${esc(g.n)}: ${g.rank[0]?"🏆 "+esc(g.rank[0].name)+" ("+g.rank[0].pts+")":"—"}</li>`).join("")}</ul>${lb(x.board)}</details>`).join(""):`<p class="mut">Nessuna sessione salvata.</p>`}</section>`;
+const podium=b=>{if(!b.length||b[0].pts<=0)return"";const P=pos(b),t=b.slice(0,3).map((x,i)=>({...x,p:P[i]})),o=[t[1],t[0],t[2]].filter(Boolean),H=[0,86,62,46];
+ return`<div class="pod">${o.map(x=>`<div><div>${esc(x.name)}</div><small>${x.pts} pt</small><i style="height:${H[x.p]}px">${["🥇","🥈","🥉"][x.p-1]}</i></div>`).join("")}</div>`};
+const matrix=(s,ps)=>{const en=ps.filter(p=>s.allow[p.id]);if(!s.played.length||!en.length)return"";const b=board(s,ps),P=pos(b),best=s.played.map(x=>Math.max(...en.map(p=>p.scores[x.r]??-1)));
+ return`<section class="card"><h2>📊 Riepilogo per gioco</h2><div class="tw"><table class="tbl"><tr><th>#</th><th>Nome</th>${s.played.map((x,k)=>`<th>${(GAMES[x.g]||{}).i||k+1}<small>${esc(x.n)}</small></th>`).join("")}<th>Totale</th></tr>${b.map((r,i)=>{const p=en.find(q=>q.id===r.id);return`<tr><td>${P[i]}</td><td>${esc(r.name)}</td>${s.played.map((x,k)=>{const v=p.scores[x.r];return`<td class="${v!=null&&v>0&&v===best[k]?"best":""}">${v==null?"—":v}</td>`}).join("")}<td class="tot">${r.pts}</td></tr>`}).join("")}</table></div><p class="mut">In verde il miglior punteggio di ogni gioco.</p></section>`};
 function admin(){if(document.activeElement&&document.activeElement.tagName==="SELECT")return;cur="adm";const s=get(K.s),h=get(K.h)||[];
- if(!s){app(`<section class="card center" style="max-width:520px;margin:4vh auto 0"><div class="big-ico">🎬</div><h2>Pannello animatore</h2><p class="mut">Crea una sessione: i partecipanti entrano con il codice che appare qui.</p><button class="b big pulse" data-a="ns" style="margin:14px 0 4px">Crea sessione</button><p><button class="b alt sm" data-a="logout">Esci</button></p></section>${hist(h)}`);return}
+ if(!s){app(`<section class="card center" style="max-width:520px;margin:4vh auto 0"><div class="big-ico">🎬</div><h2>Pannello animatore</h2><p class="mut">Crea una sessione: i partecipanti entrano con il codice che appare qui.</p><button class="b big pulse" data-a="ns" style="margin:14px 0 4px">Crea sessione</button><p><button class="b alt sm" data-a="pw">🔑 Password</button> <button class="b alt sm" data-a="logout">Esci</button></p></section>${hist(h)}`);return}
  const ps=players(),now=Date.now(),b=board(s,ps),en=part(s,ps),fin=en.filter(p=>String(s.round) in p.scores).length,G=s.mode==="group",lobby=s.status==="lobby",last=s.played[s.played.length-1];
  const st=s.status==="playing"?`Gioco in corso: ${GAMES[s.game].n} (${fin}/${en.length} hanno finito)`:s.status==="ended"?"Sessione conclusa e salvata":"In attesa del prossimo gioco";
  const sel=i=>`<select data-c="duel" data-i="${i}"><option value="">Sfidante ${i+1}…</option>${ps.filter(p=>s.allow[p.id]).map(p=>`<option value="${p.id}" ${s.duel[i]===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`;
@@ -441,14 +490,14 @@ function admin(){if(document.activeElement&&document.activeElement.tagName==="SE
  const liveCard=s.status==="playing"?`<section class="card"><h2>⏱️ Andamento in diretta</h2><p class="mut" style="margin-top:0">${esc(GAMES[s.game].n)}</p>
   <div class="prog"><i style="width:${en.length?Math.round(fin/en.length*100):0}%"></i></div>
   <p class="mut"><b style="color:var(--fg)">${fin}</b> di <b style="color:var(--fg)">${en.length}</b> hanno finito</p>
-  ${en.map(p=>{const d=String(s.round) in p.scores;return `<div class="row"><span><i class="dot2 ${d?"on":""}"></i>${esc(p.name)}</span><span class="${d?"ok":"mut"}">${d?"✅ Ha finito":"⏳ In gioco…"}</span></div>`}).join("")}
+  ${en.map(p=>{const d=String(s.round) in p.scores;return `<div class="row"><span><i class="dot2 ${d?"on":""}"></i>${esc(p.name)}</span><span class="${d?"ok":"mut"}">${d?"✅ Finito · "+p.scores[s.round]+" pt":"⏳ In gioco…"}</span></div>`}).join("")}
   ${en.length&&fin===en.length?`<div class="banner-ok">🎉 Tutti hanno finito! Premi «Termina gioco» per vedere i risultati e tornare alla lobby.</div>`:""}</section>`:"";
  app(`<div class="adm"><div class="col">
 <section class="card"><div class="chead"><h2>Stanza</h2><button class="b sm alt" data-a="copycode">📋 Copia codice</button></div>
  <div class="code">${s.code}</div>
  <p><span class="tag">${MODES[s.mode]}</span> <span class="tag st ${s.status}">${s.status==="playing"?"In corso":s.status==="ended"?"Conclusa":"In lobby"}</span></p>
  <p class="mut">${st}</p><p class="mut">I partecipanti entrano con questo codice da telefono o tablet.</p>
- <div class="btnrow"><button class="b alt sm" data-a="close" ${s.status==="ended"?"disabled":""}>Chiudi e salva</button> <button class="b sm" data-a="dl" data-v="c">Scarica CSV</button> <button class="b alt sm" data-a="ns">Nuova sessione</button> <button class="b alt sm" data-a="logout">Esci</button></div></section>
+ <div class="btnrow"><button class="b alt sm" data-a="close" ${s.status==="ended"?"disabled":""}>Chiudi e salva</button> <button class="b sm" data-a="dl" data-v="c">Scarica CSV</button> <button class="b alt sm" data-a="ns">Nuova sessione</button> <button class="b alt sm" data-a="pw">🔑 Password</button> <button class="b alt sm" data-a="logout">Esci</button></div></section>
 <section class="card"><h2>Modalità</h2><div class="btnrow" style="margin:2px 0 8px">${Object.entries(MODES).map(([k,v])=>`<button class="b sm ${k===s.mode?"on":"alt"}" data-a="mode" data-v="${k}" ${lobby?"":"disabled"}>${v}</button>`).join("")}</div>
  <p class="mut">${G?"Ogni dispositivo è una squadra: un tablet per gruppo, gli altri aiutano a voce.":s.mode==="duel"?"Sfida tra due partecipanti: gli altri tifano.":"Ognuno gioca per sé."}</p>
  ${s.mode==="duel"?sel(0)+sel(1):""}<div class="err">${am}</div></section>
@@ -459,7 +508,7 @@ function admin(){if(document.activeElement&&document.activeElement.tagName==="SE
  ${ps.length?ps.map(p=>`<div class="row"><span class="pname"><i class="dot2 ${p.bot||now-p.ts<25000?"on":""}"></i>${G?"👥 ":""}${esc(p.name)}${p.bot?` <span class="tag demo">demo</span>`:""}</span><span class="btnrow" style="margin:0"><button class="b sm alt" data-a="diff" data-v="${p.id}" title="Ritmo di gioco">⚡ ${p.diff||"normale"}</button> <button class="b sm ${s.allow[p.id]?"on":"alt"}" data-a="tog" data-v="${p.id}">${s.allow[p.id]?"✓ Abilitato":"Abilita"}</button> <button class="b sm alt danger" data-a="kick" data-v="${p.id}" aria-label="Rimuovi ${esc(p.name)}">✕</button></span></div>`).join(""):`<p class="mut empty">Nessuno ancora. Condividi il codice <b>${s.code}</b> per far entrare i partecipanti, oppure aggiungi i demo per provare.</p>`}
  <p class="btnrow"><button class="b sm" data-a="all">Abilita tutti</button> <button class="b sm alt" data-a="bots">+ demo</button></p></section>
 ${last?`<section class="card"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lr.length?`<p>Vince: <b>${esc(lr[0].name)}</b> 🏆</p>`:""}${lb(lr)}</section>`:""}
-<section class="card"><h2>Classifica della sessione</h2>${lb(b)}</section></div></div>${hist(h)}`)}
+<section class="card"><h2>🏆 Classifica della sessione</h2>${podium(b)}${lb(b)}</section>${matrix(s,ps)}</div></div>${hist(h)}`)}
 function big(){cur="big";const s=get(K.s);if(!s){app(`<section class="card center tv"><div class="big-ico hour">📺</div><h2>In attesa dell’animatore…</h2><p class="mut">Apri «LOBS» come animatore per creare la stanza.</p><div class="dots"><i></i><i></i><i></i></div></section>`);return}
  const ps=players(),G=s.mode==="group",last=s.played[s.played.length-1],lr=last?rr(last,ps):[];
  const cd=[...String(s.code)].map((c,i)=>`<span style="animation-delay:${i*100}ms">${c}</span>`).join("");
@@ -484,15 +533,22 @@ function player(){
  const isAllowed=p&&s.allow[me];
  if(!isAllowed){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico hour">⏳</div><h2>Attendi l’animatore</h2><p>${G?"La tua squadra è in lista.":"Il tuo dispositivo è in lista."} L’animatore deve abilitarti per farti entrare.</p><div class="dots"><i></i><i></i><i></i></div><div class="exit-reveal" style="margin-top:16px"><button class="b alt sm" data-a="leave">Esci</button></div></section>`);return}
  const ok=s&&p&&isAllowed&&s.status==="playing"&&(s.mode!=="duel"||s.duel.includes(me));
- if(ok&&!(String(s.round) in p.scores)){const g=GAMES[s.game],r=s.round,D=DV[p.diff||"normale"];running=r;
+ if(ok&&!(String(s.round) in p.scores)&&!((s.id+":"+s.round) in doneR)){const g=GAMES[s.game],r=s.round,D=DV[p.diff||"normale"];running=r;
   app(`<section class="card" style="max-width:640px;margin:0 auto" data-r="${r}"><div class="ghead"><span class="gicon">${g.i||"🎮"}</span><h2>${g.n}</h2></div><div id="stage" class="center"><p class="mut">${g.d}</p>${G?`<p>👥 Un componente usa il tablet, gli altri suggeriscono a voce!</p>`:""}<button class="b big pulse" id="go">Inizia!</button></div></section>`);
-  $("#go").onclick=()=>{const st=$("#stage");st.innerHTML="";stop=g.f(st,async(pts,det)=>{await sb.rpc("submit_score",{p_id:me,p_secret:sec,p_round:r,p_pts:pts,p_det:det||""});stop=null;running=null;await load();render();toast("Punteggio inviato: +"+pts+" punti","success","🎯")},D)};return}
+  $("#go").onclick=()=>{const st=$("#stage"),dk=s.id+":"+r,wait=ms=>new Promise(z=>setTimeout(z,ms));let fin=false,cl=null;st.innerHTML="";
+  const done=async(pts,det)=>{if(fin)return;fin=true;cl&&cl();
+   st.innerHTML=`<div class="fin"><div class="fin-ico">✅</div><h2>Gioco completato!</h2><p class="fin-pts">+${pts} punti</p><p class="mut">${esc(det||"")}</p></div>`;
+   let sent=false;for(let k=0;k<3&&!sent;k++){const{error}=await sb.rpc("submit_score",{p_id:me,p_secret:sec,p_round:r,p_pts:pts,p_det:det||""});sent=!error;if(!sent)await wait(800)}
+   if(!sent)toast("Punteggio non inviato: avvisa l’animatore","warn","⚠️");
+   await wait(1400);st.classList.add("fade-out");await wait(550);
+   doneR[dk]=pts;stop=null;running=null;await load();render()};
+  cl=g.f(st,done,D);stop=()=>{fin=true;cl&&cl()}};return}
  
  const last=s.played[s.played.length-1],mine=b.findIndex(x=>x.id===me)+1,playing=s.status==="playing";
  let head="Sei in sala",txt="Aspetta che l’animatore avvii il prossimo gioco.",ico="🕹️";
  if(playing&&!ok){ico="📣";head="Sfida in corso";const n=(s.duel||[]).map(id=>(ps.find(x=>x.id===id)||{}).name||"?");txt="Tocca a "+n.join(" e ")+": tifate per loro!"}
- else if(playing){ico="🎉";head=G?"La squadra ha finito! Attendete gli altri":"Hai finito! Attendi gli altri";txt=`Punti in questo gioco: <b>${p.scores[s.round]}</b>`}
- app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico">${ico}</div><h2>${head}</h2><p>${txt}</p><p><span class="poschip">${G?"Posizione della squadra":"La tua posizione"}: <b>${mine}°</b></span></p><div class="dots"><i></i><i></i><i></i></div></section>
+ else if(playing){ico="🎉";head=G?"Finito! Aspettate il prossimo gioco":"Finito! Aspetta il prossimo gioco";txt=`Punti in questo gioco: <b>${p.scores[s.round]??doneR[s.id+":"+s.round]??0}</b>`}
+ app(`<section class="card center fadein" style="max-width:560px;margin:0 auto"><div class="big-ico">${ico}</div><h2>${head}</h2><p>${txt}</p><p><span class="poschip">${G?"Posizione della squadra":"La tua posizione"}: <b>${mine}°</b></span></p><div class="dots"><i></i><i></i><i></i></div></section>
  ${last?`<section class="card" style="margin-top:16px"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lb(rr(last,ps),me)}</section>`:""}
  <section class="card" style="margin-top:16px"><h2>Classifica</h2>${lb(b,me)}<div class="exit-reveal" style="margin-top:16px"><button class="b alt sm" data-a="leave">Esci dalla stanza</button></div></section>`)}
 
