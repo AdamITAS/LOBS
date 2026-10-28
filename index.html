@@ -256,7 +256,7 @@ main{flex:1;width:100%}
 <div id="toasts" aria-live="polite"></div>
 <div id="modal-root"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="config.js"></script>
 <script>
 /* ============ UTILITY UI (toast, modal, errori) ============ */
@@ -646,6 +646,10 @@ function ok_running_check(s,p){return s&&p&&s.allow[me]&&s.status==="playing"&&r
  /* arrivo da QR / link con ?room=CODICE: si entra come partecipante con il codice già inserito */
  if(pre){if(me&&sec)sb.rpc("leave_session",{p_id:me,p_secret:sec});me=sec=sid=null;["ga:me","ga:sec","ga:sid"].forEach(k=>sessionStorage.removeItem(k));
   role="player";sessionStorage.setItem("ga:role","player");try{history.replaceState(null,"",location.pathname)}catch(e){}}
+ /* il login è condiviso tra tutte le schede dello stesso browser: se cambia account altrove, questa scheda si allinea */
+ sb.auth.onAuthStateChange((ev,ses)=>{const id=(ses&&ses.user&&ses.user.id)||"";if(id===opId)return;
+  isAdm=!!ses;opId=id;opEmail=(ses&&ses.user&&ses.user.email)||"";CS.s=null;CS.ps=[];CS.h=[];knownP={};syncedP=false;syncedScores=false;cur="";
+  load().then(()=>{loadHist();render()})});
  await load();render();live();loadHist();
  setInterval(async()=>{if(me&&sec)sb.rpc("heartbeat",{p_id:me,p_secret:sec});await load();render()},8000)})()
 </script></body></html>
