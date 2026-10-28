@@ -240,6 +240,8 @@ main{flex:1;width:100%}
 .tabs button.on{background:#fff;color:var(--ac-deep);box-shadow:var(--sh-1)}
 .plist{max-height:min(46vh,420px);overflow:auto;padding-right:4px}
 
+.gone{font-size:.78em;font-weight:600;font-style:normal;color:var(--mut)}
+.lb li.me .gone{color:#fff;opacity:.85}
 .pst{margin:1px 0 0 20px;font-size:.74em;font-weight:700;color:var(--mut);opacity:1}
 .pst.on{color:#0d7a4f}.pst.wait{color:#a86b00}
 /* ---------- QR code ---------- */
@@ -247,6 +249,11 @@ main{flex:1;width:100%}
 .qrwrap{width:min(78vw,60vh,460px);margin:0 auto;padding:12px;background:#fff;border:2px solid var(--bd);border-radius:20px;box-shadow:var(--sh-1)}
 .tvjoin{display:flex;gap:clamp(16px,4vw,48px);align-items:center;justify-content:center;flex-wrap:wrap}
 .tvjoin .qrwrap{width:clamp(180px,28vw,320px);margin:0}
+
+/* ---------- durante il gioco: niente selezione di testo, niente menu di copia ---------- */
+[data-r],[data-r] *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+[data-r]{touch-action:manipulation}
+[data-r] ::selection{background:transparent}
 </style></head><body>
 <header class="bar"><span class="brand"><span class="brand-logo">🎲</span>LOBS</span><button class="b alt sm" data-a="home">Menu</button></header>
 
@@ -296,7 +303,7 @@ const app=h=>{if(h===lastHtml)return;lastHtml=h;
  o.forEach(k=>{const d=document.querySelector(`details[data-k="${k}"]`);if(d)d.open=true})};
 let sb=null;
 function build(x,pl,sc,ro,pr){const pm={};(pr||[]).forEach(r=>pm[r.player_id]=new Date(r.seen).getTime());
- const ps=pl.map(p=>({id:p.id,name:p.name,diff:p.diff,bot:p.bot,ts:pm[p.id]||0,left:!!p.left_at,scores:{},det:{}}));
+ const ps=pl.map(p=>({id:p.id,name:p.name,diff:p.diff,bot:p.bot,ts:pm[p.id]||0,left:!!p.left_at,kicked:!!p.kicked_at,scores:{},det:{}}));
  sc.forEach(r=>{const p=ps.find(q=>q.id===r.player_id);if(p){p.scores[r.round]=r.pts;p.det[r.round]=r.det}});
  const s={id:x.id,code:x.code,mode:x.mode,status:x.status,round:x.round,sel:x.sel,game:x.game,duel:x.duel||[],ended:x.ended_at,allow:{},
   played:[...ro].sort((a,b)=>a.round-b.round).map(r=>({r:r.round,g:r.game,n:r.name,m:r.mode}))};
@@ -323,11 +330,11 @@ let tm;const live=()=>sb.channel("ga").on("postgres_changes",{event:"*",schema:"
 /* ============ notifiche automatiche (animatore) ============ */
 let knownP={},syncedP=false,syncedScores=false,allFinRound=null,finSeen={};
 function diffPlayers(){if(role!=="admin"||!isAdm||!CS.s){knownP={};syncedP=false;return}
- const nowP={};CS.ps.forEach(p=>nowP[p.id]={n:p.name,l:!!p.left});
+ const nowP={};CS.ps.forEach(p=>nowP[p.id]={n:p.name,l:!!p.left,k:!!p.kicked});
  if(syncedP){
   Object.keys(nowP).forEach(id=>{const o=knownP[id],x=nowP[id];
-   if(!o){if(!x.l)toast(esc(x.n)+" è entrato nella stanza","success","👋")}
-   else if(!o.l&&x.l)toast(esc(x.n)+" è uscito dalla stanza (i punti restano in classifica)","info","🚪")
+   if(!o){if(!x.l&&!x.k)toast(esc(x.n)+" è entrato nella stanza","success","👋")}
+   else if(!o.l&&x.l&&!x.k)toast(esc(x.n)+" è uscito dalla stanza (i punti restano in classifica)","info","🚪")
    else if(o.l&&!x.l)toast(esc(x.n)+" è rientrato nella stanza","success","👋")});
   Object.keys(knownP).forEach(id=>{if(!(id in nowP))toast(esc(knownP[id].n)+" è stato rimosso dalla stanza","info","🗑️")})}
  knownP=nowP;syncedP=true}
@@ -338,15 +345,17 @@ function diffScores(){if(role!=="admin"||!isAdm||!CS.s||CS.s.status!=="playing")
  syncedScores=true}
 
 const sum=p=>Object.values(p.scores||{}).reduce((a,b)=>a+b,0);
-const board=(s,ps)=>ps.filter(p=>s.allow[p.id]).map(p=>({id:p.id,name:p.name,pts:sum(p)})).sort((a,b)=>b.pts-a.pts);
-const part=(s,ps)=>ps.filter(p=>!p.left&&s.allow[p.id]&&(s.mode!=="duel"||s.duel.includes(p.id)));
-const rr=(x,ps)=>ps.filter(p=>p.scores&&x.r in p.scores).map(p=>({id:p.id,name:p.name,pts:p.scores[x.r],det:(p.det||{})[x.r]||""})).sort((a,b)=>b.pts-a.pts);
+/* g: 0 = presente · 1 = uscito · 2 = espulso (il nome si mostra barrato, i punti restano) */
+const gn=p=>p.kicked?2:p.left?1:0;
+const board=(s,ps)=>ps.filter(p=>s.allow[p.id]).map(p=>({id:p.id,name:p.name,g:gn(p),pts:sum(p)})).sort((a,b)=>b.pts-a.pts);
+const part=(s,ps)=>ps.filter(p=>!p.left&&!p.kicked&&s.allow[p.id]&&(s.mode!=="duel"||s.duel.includes(p.id)));
+const rr=(x,ps)=>ps.filter(p=>p.scores&&x.r in p.scores).map(p=>({id:p.id,name:p.name,g:gn(p),pts:p.scores[x.r],det:(p.det||{})[x.r]||""})).sort((a,b)=>b.pts-a.pts);
 const pos=b=>{let p=0;return b.map((x,i)=>(!i||x.pts!==b[i-1].pts?p=i+1:p))};
-const lb=(b,m)=>b.length?`<ol class="lb">${b.map((x,i)=>`<li class="${x.id===m?"me":""}" style="--w:${b[0].pts>0?Math.max(10,Math.round(x.pts/b[0].pts*100)):0}%;--i:${i}"><b>${pos(b)[i]<=3&&x.pts>0?["🥇","🥈","🥉"][pos(b)[i]-1]:pos(b)[i]}</b><span>${esc(x.name)}${x.det?`<small>${esc(x.det)}</small>`:""}</span><em>${x.pts}</em></li>`).join("")}</ol>`:`<p class="mut">Ancora nessun punteggio.</p>`;
+const lb=(b,m)=>b.length?`<ol class="lb">${b.map((x,i)=>`<li class="${x.id===m?"me":""}" style="--w:${b[0].pts>0?Math.max(10,Math.round(x.pts/b[0].pts*100)):0}%;--i:${i}"><b>${pos(b)[i]<=3&&x.pts>0?["🥇","🥈","🥉"][pos(b)[i]-1]:pos(b)[i]}</b><span>${x.g?`<s>${esc(x.name)}</s> <i class="gone">(${x.g==2?"utente espulso dalla stanza":"utente uscito"})</i>`:esc(x.name)}${x.det?`<small>${esc(x.det)}</small>`:""}</span><em>${x.pts}</em></li>`).join("")}</ol>`:`<p class="mut">Ancora nessun punteggio.</p>`;
 const snap=(s,ps)=>({at:new Date(s.ended||Date.now()).toLocaleString("it-IT"),code:s.code,mode:s.mode,games:s.played.map(x=>({n:x.n,m:x.m,rank:rr(x,ps)})),board:board(s,ps)});
-function csv(x){const L=[["Partita","Gioco","Posizione","Nome","Punti","Dettaglio"]];
- x.games.forEach((g,i)=>g.rank.forEach((r,j)=>L.push([i+1,g.n,j+1,r.name,r.pts,r.det])));
- L.push([]);L.push(["Classifica finale"]);x.board.forEach((r,j)=>L.push(["","Totale",j+1,r.name,r.pts,""]));
+function csv(x){const nm=r=>r.name+(r.g?" (utente "+(r.g==2?"espulso":"uscito")+")":"");const L=[["Partita","Gioco","Posizione","Nome","Punti","Dettaglio"]];
+ x.games.forEach((g,i)=>g.rank.forEach((r,j)=>L.push([i+1,g.n,j+1,nm(r),r.pts,r.det])));
+ L.push([]);L.push(["Classifica finale"]);x.board.forEach((r,j)=>L.push(["","Totale",j+1,nm(r),r.pts,""]));
  const t="\ufeff"+L.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(";")).join("\r\n");
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="sala-giochi-"+x.code+".csv";a.click()}
 /* ============ GIOCHI ============ */
@@ -358,7 +367,7 @@ const barAnim=(box,ms)=>{const i=box.querySelector(".prog i");if(!i)return;i.sty
 function gReflex(el,done,D){const pad=document.createElement("div");pad.className="pad";el.append(pad);
  let n=0,pts=0,st=2,t0,to,to2;const show=(c,t)=>{pad.style.background=c;pad.textContent=t};
  const next=()=>{if(n==5){done(pts,"5 tentativi");return}n++;st=0;show("#c0392b","Aspetta il verde… ("+n+"/5)");to=setTimeout(()=>{st=1;t0=performance.now();show("#1b8f4e","TOCCA ORA!")},1200+Math.random()*2500)};
- pad.onpointerdown=()=>{if(st==0){clearTimeout(to);st=2;show("#8a6d00","Troppo presto! 0 punti");to2=setTimeout(next,1300)}
+ pad.onpointerdown=e=>{if(e&&e.preventDefault)e.preventDefault();if(st==0){clearTimeout(to);st=2;show("#8a6d00","Troppo presto! 0 punti");to2=setTimeout(next,1300)}
   else if(st==1){const ms=Math.round(performance.now()-t0),p=Math.max(0,Math.round(1000-ms/D));pts+=p;st=2;show("#2f6fed",ms+" ms · +"+p+" punti");to2=setTimeout(next,1300)}};
  next();return()=>{clearTimeout(to);clearTimeout(to2)}}
 /* Bersagli: lento = cerchi grandi e fermi più a lungo; veloce = piccoli e spariscono prima */
@@ -477,7 +486,9 @@ const A={
  async tog(v){const p=get(K.p+v);await go(db(sb.from("players").update({allowed:!CS.s.allow[v]}).eq("id",v)));
   if(p)toast(esc(p.name)+(CS.s&&CS.s.allow[v]?" è stato abilitato e può entrare":" è stato disabilitato: vedrà «Attendi l’animatore»"),"info",CS.s&&CS.s.allow[v]?"✅":"⏸️")},
  async all(){await go(db(sb.from("players").update({allowed:true}).eq("session_id",CS.s.id)));toast("Tutti i dispositivi sono stati abilitati","success","✅")},
- async kick(v){const p=get(K.p+v);delete knownP[v];await go(db(sb.from("players").delete().eq("id",v)));if(p)toast(esc(p.name)+" è stato rimosso dalla stanza","warn","🗑️")},
+ /* espulsione "morbida": il giocatore resta nel database, il nome compare barrato e i punti restano in classifica */
+ async kick(v){const p=get(K.p+v);if(!p)return;if(!confirm("Espellere «"+p.name+"» dalla stanza? I suoi punti restano in classifica."))return;
+  await go(db(sb.from("players").update({kicked_at:new Date().toISOString()}).eq("id",v)));toast(esc(p.name)+" è stato espulso dalla stanza: i punti restano in classifica","warn","🚫")},
  diff(v){const p=get(K.p+v);go(db(sb.from("players").update({diff:DIFF[(DIFF.indexOf(p.diff||"normale")+1)%3]}).eq("id",v)))},
  async mode(v){am="";await upd({mode:v,sel:Object.keys(GAMES).find(k=>!!GAMES[k].g===(v==="group")),duel:[]});toast("Modalità impostata: "+MODES[v],"info","🎛️")},
  duel(i,v){const d=[...(CS.s.duel||[])];d[i]=v||null;CS.s.duel=d;document.activeElement&&document.activeElement.blur();sb.from("sessions").update({duel:d}).eq("id",CS.s.id).then(()=>{})},
@@ -485,7 +496,8 @@ const A={
  rtab(v){rt=v;render()},
  async end(){await upd({status:"lobby"});toast("Gioco terminato: i risultati sono nella classifica.","info","🏁")},
  async start(){const s=CS.s,ps=players();
-  if(s.mode==="duel"&&!(s.duel[0]&&s.duel[1]&&s.duel[0]!==s.duel[1]&&s.allow[s.duel[0]]&&s.allow[s.duel[1]])){am="Scegli due sfidanti diversi (abilitati).";render();return}
+  const okd=id=>{const q=ps.find(x=>x.id===id);return !!q&&!q.kicked&&!q.left};
+  if(s.mode==="duel"&&!(s.duel[0]&&s.duel[1]&&s.duel[0]!==s.duel[1]&&s.allow[s.duel[0]]&&s.allow[s.duel[1]]&&okd(s.duel[0])&&okd(s.duel[1]))){am="Scegli due sfidanti diversi (abilitati).";render();return}
   am="";const r=s.round+1,g=s.sel;
   await db(sb.from("rounds").insert({session_id:s.id,round:r,game:g,name:GAMES[g].n,mode:s.mode}));
   await db(sb.from("sessions").update({status:"playing",round:r,game:g}).eq("id",s.id));
@@ -516,6 +528,9 @@ const A={
 document.addEventListener("click",e=>{const el=e.target.closest("[data-a]");if(el&&A[el.dataset.a])A[el.dataset.a](el.dataset.v)});
 document.addEventListener("change",e=>{const el=e.target.closest("[data-c]");if(el)A[el.dataset.c](+el.dataset.i,el.value)});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="em"||e.target.id==="pw"))A.login();if(e.key==="Enter"&&/^rs[0-3]$/.test(e.target.id))A.reset();if(e.key==="Enter"&&/^pw[012]$/.test(e.target.id))A.changePw();if(e.key==="Enter"&&(e.target.id==="nm"||e.target.id==="cd"))A.join();if(e.key==="Enter"&&e.target.id==="bc")A.bigset();if(e.key==="Escape"){const r=$("#modal-root");if(r&&r.firstChild)r.innerHTML=""}});
+/* durante il gioco (sezione con data-r) niente selezione, niente menu "copia", niente trascinamento */
+const inGame=e=>{const t=e.target&&(e.target.nodeType===1?e.target:e.target.parentElement);return !!(t&&t.closest&&t.closest("[data-r]"))};
+["selectstart","contextmenu","dragstart"].forEach(ev=>document.addEventListener(ev,e=>{if(inGame(e))e.preventDefault()}));
 /* ============ VISTE ============ */
 function render(){if(!role)return home();if(role==="big")return big();if(role==="admin")return isAdm?(showPw?pwView():showSet?setView():admin()):(showRs?rsView():login());player()}
 function home(){cur="home";app(`<div class="hero center"><div class="hero-ico">🎲</div><h1>LOBS</h1><p class="mut">QUIZ, RIFLESSI e SFIDE di gruppo - più punti = meglio è</p></div>
@@ -552,20 +567,21 @@ function rsView(){if(cur==="rs")return;cur="rs";app(`<section class="card" style
 <div class="err" id="err"></div><button class="b big" id="rbtn" data-a="reset">Imposta nuova password</button><p><button class="b alt sm" data-a="rsx">← Torna al login</button></p></section>`)}
 const hist=h=>`<section class="card" style="margin-top:16px"><h2>🗂️ Sessioni salvate</h2>${h.length?h.map((x,i)=>`<div class="row"><span>${esc(x.at)} · stanza ${x.code} · ${MODES[x.mode]||""} · ${x.games.length} giochi</span><button class="b sm" data-a="dl" data-v="${i}">⬇ CSV</button></div><details data-k="${i}"><summary>Vincitori e classifica</summary><ul class="check">${x.games.map(g=>`<li>${esc(g.n)}: ${g.rank[0]?"🏆 "+esc(g.rank[0].name)+" ("+g.rank[0].pts+")":"—"}</li>`).join("")}</ul>${lb(x.board)}</details>`).join(""):`<p class="mut">Nessuna sessione salvata.</p>`}</section>`;
 const podium=b=>{if(!b.length||b[0].pts<=0)return"";const P=pos(b),t=b.slice(0,3).map((x,i)=>({...x,p:P[i]})),o=[t[1],t[0],t[2]].filter(Boolean),H=[0,86,62,46];
- return`<div class="pod">${o.map(x=>`<div><div>${esc(x.name)}</div><small>${x.pts} pt</small><i style="height:${H[x.p]}px">${["🥇","🥈","🥉"][x.p-1]}</i></div>`).join("")}</div>`};
+ return`<div class="pod">${o.map(x=>`<div><div>${x.g?`<s>${esc(x.name)}</s>`:esc(x.name)}</div><small>${x.pts} pt</small><i style="height:${H[x.p]}px">${["🥇","🥈","🥉"][x.p-1]}</i></div>`).join("")}</div>`};
 const matrix=(s,ps)=>{const en=ps.filter(p=>s.allow[p.id]);if(!s.played.length||!en.length)return`<p class="mut">Nessun gioco giocato ancora.</p>`;const b=board(s,ps),P=pos(b),best=s.played.map(x=>Math.max(...en.map(p=>p.scores[x.r]??-1)));
- return`<div class="tw"><table class="tbl"><tr><th>#</th><th>Nome</th>${s.played.map((x,k)=>`<th>${(GAMES[x.g]||{}).i||k+1}<small>${esc(x.n)}</small></th>`).join("")}<th>Totale</th></tr>${b.map((r,i)=>{const p=en.find(q=>q.id===r.id);return`<tr><td>${P[i]}</td><td>${esc(r.name)}</td>${s.played.map((x,k)=>{const v=p.scores[x.r];return`<td class="${v!=null&&v>0&&v===best[k]?"best":""}">${v==null?"—":v}</td>`}).join("")}<td class="tot">${r.pts}</td></tr>`}).join("")}</table></div><p class="mut">In verde il miglior punteggio di ogni gioco.</p>`};
+ return`<div class="tw"><table class="tbl"><tr><th>#</th><th>Nome</th>${s.played.map((x,k)=>`<th>${(GAMES[x.g]||{}).i||k+1}<small>${esc(x.n)}</small></th>`).join("")}<th>Totale</th></tr>${b.map((r,i)=>{const p=en.find(q=>q.id===r.id);return`<tr><td>${P[i]}</td><td>${r.g?`<s>${esc(r.name)}</s>`:esc(r.name)}</td>${s.played.map((x,k)=>{const v=p.scores[x.r];return`<td class="${v!=null&&v>0&&v===best[k]?"best":""}">${v==null?"—":v}</td>`}).join("")}<td class="tot">${r.pts}</td></tr>`}).join("")}</table></div><p class="mut">In verde il miglior punteggio di ogni gioco.</p>`};
 /* stato di ogni partecipante: online = ha mandato un segnale negli ultimi 25 secondi */
-const isOn=p=>!p.left&&(p.bot||Date.now()-p.ts<25000);
-const pstat=(p,s)=>{if(p.left)return["off","🚪 Ha lasciato la stanza · punti conservati"];if(!isOn(p))return["off","⚪ Offline"];if(!s.allow[p.id])return["wait","🟡 Online · attende l’abilitazione"];
+const gone=p=>p.left||p.kicked;
+const isOn=p=>!p.left&&!p.kicked&&(p.bot||Date.now()-p.ts<25000);
+const pstat=(p,s)=>{if(gone(p))return["off","⚪ Punti conservati in classifica"];if(!isOn(p))return["off","⚪ Offline"];if(!s.allow[p.id])return["wait","🟡 Online · attende l’abilitazione"];
  if(s.status==="playing"&&(s.mode!=="duel"||s.duel.includes(p.id)))return String(s.round) in p.scores?["on","✅ Online · ha finito"]:["on","🎮 Online · sta giocando"];
  return["on","🟢 Online · in sala"]};
 function admin(){if(document.activeElement&&document.activeElement.tagName==="SELECT")return;cur="adm";const s=get(K.s),h=get(K.h)||[];
  if(!s){app(`<section class="card center" style="max-width:520px;margin:4vh auto 0"><div class="big-ico">🎬</div>${greet()}<h2>Pannello animatore</h2><p class="mut">Crea una sessione: i partecipanti entrano con il codice che appare qui.</p><button class="b big pulse" data-a="ns" style="margin:14px 0 4px">Crea sessione</button><p><button class="b alt sm" data-a="set">⚙️ Impostazioni</button> <button class="b alt sm" data-a="logout">Esci</button></p></section>${hist(h)}`);return}
  const ps=players(),now=Date.now(),b=board(s,ps),en=part(s,ps),fin=en.filter(p=>String(s.round) in p.scores).length,G=s.mode==="group",lobby=s.status==="lobby",last=s.played[s.played.length-1];
- const onl=ps.filter(isOn).length,act=ps.filter(p=>!p.left).length,wait=ps.filter(p=>!p.left&&!s.allow[p.id]).length;
+ const onl=ps.filter(isOn).length,act=ps.filter(p=>!gone(p)).length,wait=ps.filter(p=>!gone(p)&&!s.allow[p.id]).length;
  const st=s.status==="playing"?`Gioco in corso: ${GAMES[s.game].n} (${fin}/${en.length} hanno finito)`:s.status==="ended"?"Sessione conclusa e salvata":"In attesa del prossimo gioco";
- const sel=i=>`<select data-c="duel" data-i="${i}"><option value="">Sfidante ${i+1}…</option>${ps.filter(p=>s.allow[p.id]&&!p.left).map(p=>`<option value="${p.id}" ${s.duel[i]===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`;
+ const sel=i=>`<select data-c="duel" data-i="${i}"><option value="">Sfidante ${i+1}…</option>${ps.filter(p=>s.allow[p.id]&&!gone(p)).map(p=>`<option value="${p.id}" ${s.duel[i]===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`;
  const lr=last?rr(last,ps):[];
  if(s.status==="playing"&&en.length>0&&fin===en.length&&allFinRound!==s.round){allFinRound=s.round;toast("Tutti hanno finito il gioco! Quando vuoi, premi «Termina gioco».","success","🎉")}
  const stats=`<div class="stats">
@@ -580,7 +596,7 @@ function admin(){if(document.activeElement&&document.activeElement.tagName==="SE
   <div class="plist">${en.map(p=>{const d=String(s.round) in p.scores;return `<div class="row"><span><i class="dot2 ${d?"on":""}"></i>${esc(p.name)}</span><span class="${d?"ok":"mut"}">${d?"✅ Finito · "+p.scores[s.round]+" pt":isOn(p)?"⏳ In gioco…":"⚪ Offline"}</span></div>`}).join("")}</div></section>`:"";
  const tabs=[["board","🏆 Classifica"]].concat(last?[["last","🎮 Ultimo gioco"]]:[]).concat(s.played.length?[["mat","📊 Riepilogo"]]:[]);
  const tb=tabs.some(t=>t[0]===rt)?rt:"board";
- const resBody=tb==="last"?`<p class="mut" style="margin:6px 0">${esc(last.n)}${lr.length?` · Vince <b style="color:var(--fg)">${esc(lr[0].name)}</b> 🏆`:""}</p>${lb(lr)}`:tb==="mat"?matrix(s,ps):podium(b)+lb(b);
+ const resBody=tb==="last"?`<p class="mut" style="margin:6px 0">${esc(last.n)}${lr.length?` · Vince <b style="color:var(--fg)">${lr[0].g?`<s>${esc(lr[0].name)}</s>`:esc(lr[0].name)}</b> 🏆`:""}</p>${lb(lr)}`:tb==="mat"?matrix(s,ps):podium(b)+lb(b);
  const resCard=`<section class="card"><h2>🏆 Risultati</h2><div class="tabs">${tabs.map(t=>`<button class="${t[0]===tb?"on":""}" data-a="rtab" data-v="${t[0]}">${t[1]}</button>`).join("")}</div>${resBody}</section>`;
  app(`${greet()}${stats}<div class="adm"><div class="col">
 <section class="card"><div class="chead"><h2>Stanza</h2><button class="b sm alt" data-a="copycode">📋 Copia codice</button></div>
@@ -596,7 +612,7 @@ function admin(){if(document.activeElement&&document.activeElement.tagName==="SE
  ${s.status==="playing"?`<button class="b big" data-a="end" style="margin-top:12px">Termina gioco</button>`:`<button class="b big pulse" data-a="start" ${s.status==="ended"?"disabled":""} style="margin-top:12px">▶ Avvia: ${GAMES[s.sel].n}</button>`}</section></div>
 <div class="col">${liveCard}
 <section class="card"><h2>${G?"👥 Squadre":"📱 Dispositivi"} <span class="count" title="online / totali">🟢 ${onl}/${act}</span></h2>
- ${ps.length?`<div class="plist">${[...ps].sort((a,b)=>(a.left?1:0)-(b.left?1:0)).map(p=>`<div class="row"><span class="pname"><i class="dot2 ${isOn(p)?"on":""}"></i>${G?"👥 ":""}${esc(p.name)}${p.bot?` <span class="tag demo">demo</span>`:""}<small class="pst ${pstat(p,s)[0]}">${pstat(p,s)[1]}</small></span><span class="btnrow" style="margin:0">${p.left?"":`<button class="b sm alt" data-a="diff" data-v="${p.id}" title="Ritmo di gioco">⚡ ${p.diff||"normale"}</button> <button class="b sm ${s.allow[p.id]?"on":"alt"}" data-a="tog" data-v="${p.id}">${s.allow[p.id]?"✓ Abilitato":"Abilita"}</button> `}<button class="b sm alt danger" data-a="kick" data-v="${p.id}" aria-label="Rimuovi ${esc(p.name)}">✕</button></span></div>`).join("")}</div>`:`<p class="mut empty">Nessuno ancora. Condividi il codice <b>${s.code}</b> per far entrare i partecipanti, oppure aggiungi i demo per provare.</p>`}
+ ${ps.length?`<div class="plist">${[...ps].sort((a,b)=>(gone(a)?1:0)-(gone(b)?1:0)).map(p=>`<div class="row"><span class="pname"><i class="dot2 ${isOn(p)?"on":""}"></i>${G?"👥 ":""}${gone(p)?`<s>${esc(p.name)}</s> <span class="gone">(${p.kicked?"utente espulso dalla stanza":"utente uscito"})</span>`:esc(p.name)}${p.bot?` <span class="tag demo">demo</span>`:""}<small class="pst ${pstat(p,s)[0]}">${pstat(p,s)[1]}</small></span><span class="btnrow" style="margin:0">${gone(p)?"":`<button class="b sm alt" data-a="diff" data-v="${p.id}" title="Ritmo di gioco">⚡ ${p.diff||"normale"}</button> <button class="b sm ${s.allow[p.id]?"on":"alt"}" data-a="tog" data-v="${p.id}">${s.allow[p.id]?"✓ Abilitato":"Abilita"}</button> `}${gone(p)?"":`<button class="b sm alt danger" data-a="kick" data-v="${p.id}" aria-label="Espelli ${esc(p.name)}" title="Espelli dalla stanza">✕</button>`}</span></div>`).join("")}</div>`:`<p class="mut empty">Nessuno ancora. Condividi il codice <b>${s.code}</b> per far entrare i partecipanti, oppure aggiungi i demo per provare.</p>`}
  <p class="mut" style="font-size:.8em;margin:8px 0 0">⚡ Ritmo: <b>lento</b> = più tempo e più facile · <b>veloce</b> = meno tempo e più difficile. Vale dal gioco successivo.</p>
  <p class="btnrow"><button class="b sm" data-a="all">Abilita tutti</button> <button class="b sm alt" data-a="bots">+ demo</button></p></section>
 ${resCard}</div></div>${hist(h)}`)}
@@ -610,7 +626,7 @@ function big(){
  const u=joinUrl(s.code),q=s.status==="ended"?"":qrSvg(u);
  app(`<div class="tv"><section class="card center"><p class="mut biglbl">${q?"Inquadra il QR oppure entra con il codice":"Entra con il codice"}</p><div class="tvjoin">${q?`<div class="qrwrap">${q}</div>`:""}<div><div class="code">${cd}</div><p class="mut" style="margin:0;font-size:.85em;overflow-wrap:anywhere">${esc(location.host)}</p></div></div><p style="margin-top:14px"><button class="b sm alt" data-a="copycode">📋 Copia il codice</button></p><p><span class="tag">${MODES[s.mode]}</span> <span class="mut">${stp}</span></p>${chg}</section>
  <section class="card" style="margin-top:16px"><h2>${G?"Classifica squadre":"Classifica"}</h2>${lb(board(s,ps))}</section>
- ${s.status!=="playing"&&lr.length?`<section class="card center" style="margin-top:16px"><div class="big-ico trophy">🏆</div><h2>${esc(last.n)}</h2><p class="winlbl">${G?"Vince la squadra":"Vince"} <b>${esc(lr[0].name)}</b></p>${lb(lr)}</section>`:""}</div>`)}
+ ${s.status!=="playing"&&lr.length?`<section class="card center" style="margin-top:16px"><div class="big-ico trophy">🏆</div><h2>${esc(last.n)}</h2><p class="winlbl">${G?"Vince la squadra":"Vince"} <b>${lr[0].g?`<s>${esc(lr[0].name)}</s>`:esc(lr[0].name)}</b></p>${lb(lr)}</section>`:""}</div>`)}
 function player(){
  const s=get(K.s),p=me&&get(K.p+me),G=s&&s.mode==="group",ps=players();
  
@@ -625,13 +641,14 @@ function player(){
  cur="pl";const b=s?board(s,ps):[];
  if(!s||s.status==="ended"){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico trophy">🏁</div><h2>Sessione conclusa</h2><p class="mut">Grazie per aver giocato! Ora puoi tornare al Menu!.</p>${lb(b,me)}<div class="exit-reveal" style="margin-top:16px"><button class="b alt" data-a="leave">Esci dalla stanza</button></div></section>`);return}
  
- if(me&&!p){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico">🚫</div><h2>Sei stato rimosso dalla stanza</h2><p class="mut">L’animatore ti ha tolto dalla stanza. Se è un errore, esci e rientra con il codice.</p><button class="b" data-a="leave">Esci</button></section>`);return}
+ if(me&&(!p||p.kicked)){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico">🚫</div><h2>Sei stato rimosso dalla stanza</h2><p class="mut">L’animatore ti ha tolto dalla stanza. Se è un errore, esci e rientra con il codice.</p><button class="b" data-a="leave">Esci</button></section>`);return}
  const isAllowed=p&&s.allow[me];
  if(!isAllowed){app(`<section class="card center" style="max-width:560px;margin:0 auto"><div class="big-ico hour">⏳</div><h2>Attendi l’animatore</h2><p>${G?"La tua squadra è in lista.":"Il tuo dispositivo è in lista."} L’animatore deve abilitarti per farti entrare.</p><div class="dots"><i></i><i></i><i></i></div><div class="exit-reveal" style="margin-top:16px"><button class="b alt sm" data-a="leave">Esci</button></div></section>`);return}
  const ok=s&&p&&isAllowed&&s.status==="playing"&&(s.mode!=="duel"||s.duel.includes(me));
  if(ok&&!(String(s.round) in p.scores)&&!((s.id+":"+s.round) in doneR)){const g=GAMES[s.game],r=s.round;running=r;
   app(`<section class="card" style="max-width:640px;margin:0 auto" data-r="${r}"><div class="ghead"><span class="gicon">${g.i||"🎮"}</span><h2>${g.n}</h2></div><div id="stage" class="center"><p class="mut">${g.d}</p>${G?`<p>👥 Un componente usa il tablet, gli altri suggeriscono a voce!</p>`:""}<button class="b big pulse" id="go">Inizia!</button></div></section>`);
   $("#go").onclick=()=>{const D=DV[(get(K.p+me)||{}).diff||"normale"],st=$("#stage"),dk=s.id+":"+r,wait=ms=>new Promise(z=>setTimeout(z,ms));let fin=false,cl=null;st.innerHTML="";
+  try{const sl=window.getSelection&&window.getSelection();sl&&sl.removeAllRanges&&sl.removeAllRanges()}catch(e){}
   const done=async(pts,det)=>{if(fin)return;fin=true;cl&&cl();
    st.innerHTML=`<div class="fin"><div class="fin-ico">✅</div><h2>Gioco completato!</h2><p class="fin-pts">+${pts} punti</p><p class="mut">${esc(det||"")}</p></div>`;
    let sent=false;for(let k=0;k<3&&!sent;k++){const{error}=await sb.rpc("submit_score",{p_id:me,p_secret:sec,p_round:r,p_pts:pts,p_det:det||""});sent=!error;if(!sent)await wait(800)}
@@ -648,7 +665,7 @@ function player(){
  ${last?`<section class="card" style="margin-top:16px"><h2>Ultimo gioco: ${esc(last.n)}</h2>${lb(rr(last,ps),me)}</section>`:""}
  <section class="card" style="margin-top:16px"><h2>Classifica</h2>${lb(b,me)}<div class="exit-reveal" style="margin-top:16px"><button class="b alt sm" data-a="leave">Esci dalla stanza</button></div></section>`)}
 
-function ok_running_check(s,p){return s&&p&&s.allow[me]&&s.status==="playing"&&running===s.round;}
+function ok_running_check(s,p){return s&&p&&!p.kicked&&s.allow[me]&&s.status==="playing"&&running===s.round;}
 
 (async()=>{
  if(!window.SUPABASE_URL||!window.supabase||window.SUPABASE_URL.includes("TUO-PROGETTO")){app(`<section class="card" style="max-width:520px;margin:8vh auto 0"><div class="big-ico">⚙️</div><h2>Configurazione mancante</h2><p class="mut">Compila <b>config.js</b> con URL e chiave anon di Supabase.</p></section>`);return}
